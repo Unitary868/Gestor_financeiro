@@ -52,6 +52,7 @@ Create (Criar) → criação de conta e transações
 Read (Ler) → consulta de dados (extrato, saldo, conta)
 Update (Atualizar) → edição de transações
 Delete (Eliminar) → remoção de transações
+
 ❌Entidades Sistema de Erros
 
 O sistema utiliza códigos inspirados em HTTP para representar estados e erros:
