@@ -64,17 +64,20 @@ O sistema utiliza códigos inspirados em HTTP para representar estados e erros:
 404 Not Found → recurso inexistente
 409 Conflict → conflito de dados
 500 Internal Server Error → erro do sistema
+
 🧰 Módulos do Sistema
 main.py → interface principal e controlo do fluxo do programa
 conta.py → gestão da entidade Conta
 transacao.py → gestão da entidade Transação
 utils.py → funções auxiliares (validação, IDs, tokens)
+
 🔄 Funcionamento Geral
 O utilizador cria uma conta ou faz login
 Após autenticação, acede ao menu principal
 Pode registar receitas e despesas
 Pode consultar o extrato e saldo
 Pode editar ou apagar transações
+
 🧠 Conclusão
 
 O sistema FinançasPro demonstra uma implementação sólida de conceitos fundamentais de programação, incluindo estruturas de dados, modularização e operações CRUD. A utilização de códigos de erro inspirados em HTTP contribui para uma abordagem mais profissional e organizada, aproximando o funcionamento do sistema a aplicações reais.
