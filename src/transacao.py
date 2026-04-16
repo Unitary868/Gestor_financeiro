@@ -21,7 +21,10 @@ def adicionar_transacao(tipo, descricao, valor, categoria):
         _id_t += 1
         transacoes.append({
             "id": _id_t, "tipo": tipo,
-            "descricao": descricao, "valor": valor, "categoria": categoria
+            "descricao":
+            descricao, "valor":
+            valor, "categoria":
+            categoria
         })
         return (201, f"Transação #{_id_t} criada com sucesso.")
     except Exception as e:
