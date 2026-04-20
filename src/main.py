@@ -4,7 +4,8 @@ import os, time
 from transacao import (transacoes, adicionar_transacao, encontrar_transacao,
                        editar_transacao, apagar_transacao, listar_transacoes,
                        totais, calcular_saldo, escolher_cat)
-from conta import (criar_conta, conta_existe, verificar_login, get_nome, get_id)
+from conta import (criar_conta, conta_existe, verificar_login,
+                   get_nome, get_id, menu_conta)
 
 # ── Funções UI ────────────────────────────────────────────────
 
@@ -192,8 +193,8 @@ def editar():
         return
     t = rc[2]
     print(f"\n  Atual → {t['tipo']} | {t['descricao']} | {t['valor']:.2f}€ | {t['categoria']}")
-    nova_desc   = input(f"  Descrição [{t['descricao']}]: ").strip()
-    novo_valor  = None
+    nova_desc     = input(f"  Descrição [{t['descricao']}]: ").strip()
+    novo_valor    = None
     entrada_valor = input(f"  Valor [{t['valor']:.2f}]: ").strip().replace(",", ".")
     if entrada_valor:
         try:
@@ -245,13 +246,17 @@ def menu_principal():
         saldo_val = saldo_rc[1] if saldo_rc[0] == 200 else 0.0
         print(f"  👤 {nome_val}  |  🆔 {id_val}  |  💰 {saldo_val:.2f}€  |  Trans: {len(transacoes)}\n")
         sep()
-        print("  1-Nova   2-Extrato   3-Editar   4-Apagar   0-Sair")
+        print("  1-Nova   2-Extrato   3-Editar   4-Apagar   5-Conta   0-Sair")
         sep()
         opcao = input("\n  Opção: ").strip()
         if opcao == "0":
             limpar()
             print(f"\n  👋 Até à próxima, {nome_val}!\n")
             break
+        elif opcao == "5":
+            if menu_conta():
+                transacoes.clear()
+                break
         elif opcao in acoes:
             acoes[opcao]()
         else:
