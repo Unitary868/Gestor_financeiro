@@ -70,10 +70,14 @@ def get_dados():
         if not conta:
             return (404, "Nenhuma conta encontrada.")
         return (200, {
-            "id": conta.get("id", "—"),
-            "nome": conta.get("nome", "—"),
-            "nif": conta.get("nif", "—"),
-            "token": conta.get("token", "—"),
+            "id":
+            conta.get("id", "—"),
+            "nome":
+            conta.get("nome", "—"),
+            "nif":
+            conta.get("nif", "—"),
+            "token":
+            conta.get("token", "—"),
         })
     except Exception as e:
         return (500, str(e))
