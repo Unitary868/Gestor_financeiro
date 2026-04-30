@@ -1,115 +1,104 @@
+# transacao.py – Entidade Transação
 
-from utils import gerar_id_transacao
+from utils import pedir_num, sep, cab, pausar
 
-transacoes = {}
-_id_global = 0
+# ── Dados globais ─────────────────────────────────────────────
+
+transacoes = []
+_id_t      = 0
 
 CATEGORIAS = (
-    "Alimentação", "Transporte", "Lazer", "Saúde",
-    "Educação", "Habitação", "Vestuário", "Tecnologia",
-    "Poupança", "Salário", "Freelance", "Outros",
+    "Alimentação", "Transporte", "Lazer",    "Saúde",
+    "Educação",    "Habitação",  "Vestuário", "Tecnologia",
+    "Poupança",    "Salário",    "Freelance", "Outros",
 )
 
+# ── CRUD ──────────────────────────────────────────────────────
 
-# CREATE
 def adicionar_transacao(tipo, descricao, valor, categoria):
-    # Validações AQUI (padrão prof)
-    if tipo not in ["receita", "despesa"]:
-        return 400, "Tipo inválido. Use 'receita' ou 'despesa'"
-    if len(descricao.strip()) < 2:
-        return 400, "Descrição deve ter pelo menos 2 caracteres"
-    if valor <= 0:
-        return 400, "Valor deve ser positivo"
-    if categoria not in CATEGORIAS:
-        return 400, f"Categoria inválida. Use: {', '.join(CATEGORIAS)}"
+    try:
+        global _id_t
+        _id_t += 1
+        transacoes.append({
+            "id": _id_t, "tipo": tipo,
+            "descricao":
+            descricao, "valor":
+            valor, "categoria":
+            categoria
+        })
+        return (201, f"Transação #{_id_t} criada com sucesso.")
+    except Exception as e:
+        return (500, str(e))
 
-    global _id_global
-    _id_global += 1
-    id_transacao = _id_global
+def encontrar_transacao(id_t):
+    try:
+        for i, t in enumerate(transacoes):
+            if t["id"] == id_t:
+                return (200, i, t)
+        return (404, f"Transação #{id_t} não encontrada.")
+    except Exception as e:
+        return (500, str(e))
 
-    transacao = {
-        "id": id_transacao,
-        "tipo": tipo,
-        "descricao": descricao.strip(),
-        "valor": valor,
-        "categoria": categoria
-    }
+def editar_transacao(id_t, desc=None, valor=None, cat=None):
+    try:
+        rc = encontrar_transacao(id_t)
+        if rc[0] == 404:
+            return (404, f"Transação #{id_t} não encontrada.")
+        idx = rc[1]
+        if desc:
+            transacoes[idx]["descricao"] = desc
+        if valor:
+            transacoes[idx]["valor"]     = valor
+        if cat:
+            transacoes[idx]["categoria"] = cat
+        return (200, f"Transação #{id_t} atualizada com sucesso.")
+    except Exception as e:
+        return (500, str(e))
 
-    transacoes[id_transacao] = transacao
-    return 201, transacao
+def apagar_transacao(id_t):
+    try:
+        rc = encontrar_transacao(id_t)
+        if rc[0] == 404:
+            return (404, f"Transação #{id_t} não encontrada.")
+        transacoes.pop(rc[1])
+        return (200, f"Transação #{id_t} apagada com sucesso.")
+    except Exception as e:
+        return (500, str(e))
 
-
-# READ (individual)
-def encontrar_transacao(id_transacao):
-    if id_transacao not in transacoes:
-        return 404, f"Transação #{id_transacao} não encontrada."
-    return 200, transacoes[id_transacao]
-
-
-# READ (lista)
 def listar_transacoes(filtro="todas", categoria=None):
-    if not transacoes:
-        return 404, "Não existem transações registadas."
+    try:
+        if filtro == "receitas":
+            lst = [t for t in transacoes if t["tipo"] == "receita"]
+        elif filtro == "despesas":
+            lst = [t for t in transacoes if t["tipo"] == "despesa"]
+        elif filtro == "categoria" and categoria:
+            lst = [t for t in transacoes if t["categoria"] == categoria]
+        else:
+            lst = list(transacoes)
+        return (200, lst)
+    except Exception as e:
+        return (500, str(e))
 
-    resultado = {}
-    for id_t, t in transacoes.items():
-        if filtro == "receitas" and t["tipo"] != "receita":
-            continue
-        if filtro == "despesas" and t["tipo"] != "despesa":
-            continue
-        if filtro == "categoria" and t["categoria"] != categoria:
-            continue
-        resultado[id_t] = t
+def totais(lista):
+    try:
+        r = sum(t["valor"] for t in lista if t["tipo"] == "receita")
+        d = sum(t["valor"] for t in lista if t["tipo"] == "despesa")
+        return (200, r, d)
+    except Exception as e:
+        return (500, str(e))
 
-    if not resultado:
-        return 404, "Nenhuma transação encontrada com esse filtro."
-    return 200, list(resultado.values())
-
-
-# UPDATE
-def editar_transacao(id_transacao, descricao=None, valor=None, categoria=None):
-    if id_transacao not in transacoes:
-        return 404, f"Transação #{id_transacao} não encontrada."
-
-    t = transacoes[id_transacao]
-
-    if descricao and len(descricao.strip()) < 2:
-        return 400, "Descrição deve ter pelo menos 2 caracteres"
-    if valor and valor <= 0:
-        return 400, "Valor deve ser positivo"
-    if categoria and categoria not in CATEGORIAS:
-        return 400, f"Categoria inválida. Use: {', '.join(CATEGORIAS)}"
-
-    if descricao:
-        transacoes[id_transacao]["descricao"] = descricao.strip()
-    if valor:
-        transacoes[id_transacao]["valor"] = valor
-    if categoria:
-        transacoes[id_transacao]["categoria"] = categoria
-
-    return 200, transacoes[id_transacao]
-
-
-# DELETE
-def apagar_transacao(id_transacao):
-    if id_transacao not in transacoes:
-        return 404, f"Transação #{id_transacao} não encontrada."
-    del transacoes[id_transacao]
-    return 200, f"Transação #{id_transacao} removida com sucesso."
-
-
-# HELPERS (para main)
 def calcular_saldo():
-    if not transacoes:
-        return 200, 0.0
+    try:
+        total = 0.0
+        for t in transacoes:
+            total += t["valor"] if t["tipo"] == "receita" else -t["valor"]
+        return (200, total)
+    except Exception as e:
+        return (500, str(e))
 
-    total = 0.0
-    for t in transacoes.values():
-        total += t["valor"] if t["tipo"] == "receita" else -t["valor"]
-    return 200, total
+# ── Helper UI ─────────────────────────────────────────────────
 
-
-def totais(lista_transacoes):
-    receitas = sum(t["valor"] for t in lista_transacoes if t["tipo"] == "receita")
-    despesas = sum(t["valor"] for t in lista_transacoes if t["tipo"] == "despesa")
-    return 200, receitas, despesas
+def escolher_cat():
+    for i, c in enumerate(CATEGORIAS, 1):
+        print(f"    {i:2}. {c}")
+    return CATEGORIAS[int(pedir_num(f"  Categoria (1-{len(CATEGORIAS)}): ", 1, len(CATEGORIAS), False)) - 1]

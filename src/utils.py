@@ -1,53 +1,67 @@
-import random
-from datetime import datetime
-import string
+# utils.py – Funções auxiliares, validação, ID e token
 
-# ── PEDIR INPUT (para main) ───────────────────────────────────
+import os, random, string
+
+def limpar():
+    os.system("cls" if os.name == "nt" else "clear")
+def sep():
+    print("─" * 60)
+def cab(t):
+    print("\n" + "═"*60 + f"\n  {t}\n" + "═"*60)
+def pausar():
+    input("\n  Pressione Enter para continuar...")
+
+# ── Números ───────────────────────────────────────────────────
+
 def pedir_num(msg, mn=None, mx=None, dec=True):
-    """pedir_num do teu sistema original (simplificado)"""
     while True:
         try:
             v = (float if dec else int)(input(msg).strip().replace(",", "."))
             if (mn is None or v >= mn) and (mx is None or v <= mx):
                 return v
-            print(f"400: Valor deve estar entre {mn} e {mx}.")
+            print(f"  400 - Bad Request: Valor fora do intervalo {mn} – {mx}.")
         except ValueError:
-            print("400: Número inválido.")
+            print("  400 - Bad Request: Número inválido.")
 
-# ── GERAÇÃO DE IDs ────────────────────────────────────────────
-def gerar_id_conta():
+# ── Texto ─────────────────────────────────────────────────────
+
+def pedir_texto(msg):
+    while True:
+        t = input(msg).strip()
+        if t:
+            return t
+        print("  400 - Bad Request: Campo obrigatório.")
+
+# ── Validação de campos ───────────────────────────────────────
+
+def pedir_nif():
+    while True:
+        n = input("  NIF (9 dígitos): ").strip()
+        if n.isdigit() and len(n) == 9:
+            return n
+        print("  400 - Bad Request: NIF inválido, deve ter 9 dígitos.")
+
+def pedir_pin():
+    while True:
+        p = input("  PIN (4 dígitos): ").strip()
+        if p.isdigit() and len(p) == 4:
+            return p
+        print("  400 - Bad Request: PIN inválido, deve ter 4 dígitos.")
+
+def pedir_password():
+    while True:
+        p = input("  Password (mín. 6 caracteres): ")
+        if len(p) < 6:
+            print("  400 - Bad Request: Password demasiado curta."); continue
+        c = input("  Confirmar password: ")
+        if p == c:
+            return p
+        print("  400 - Bad Request: Passwords não coincidem.")
+
+# ── ID e Token ────────────────────────────────────────────────
+
+def gerar_id():
     return random.randint(1000, 9999)
-
-def gerar_id_transacao():
-    return random.randint(10000, 99999)
-
-def gerar_id_orcamento():
-    return f"O{random.randint(1, 999):03d}"
-
-def gerar_id_pagamento():
-    return f"P{random.randint(1, 999):03d}"
-
-# ── VALIDAÇÕES (para módulos) ─────────────────────────────────
-def validar_data(data_str):
-    if not data_str: return False
-    try:
-        datetime.strptime(data_str, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
-
-def validar_nif(nif):
-    return isinstance(nif, str) and nif.isdigit() and len(nif) == 9
-
-def validar_pin(pin):
-    return isinstance(pin, str) and pin.isdigit() and len(pin) == 4
-
-def validar_float_positivo(valor):
-    try:
-        v = float(valor)
-        return v > 0
-    except (TypeError, ValueError):
-        return False
 
 def gerar_token(uid):
     l = "".join(random.choices(string.ascii_uppercase, k=3))
