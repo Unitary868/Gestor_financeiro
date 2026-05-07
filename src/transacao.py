@@ -1,3 +1,11 @@
+# ==============================
+# transacao.py
+# CRUD simples para entidade Transação
+# SEM utilização de classes
+# Armazenamento em dicionário
+# Validações feitas aqui (não no main)
+# ==============================
+
 from utils import gerar_id_transacao
 
 transacoes = {}

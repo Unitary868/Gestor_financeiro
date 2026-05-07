@@ -1,3 +1,11 @@
+# ==============================
+# conta.py
+# CRUD simples para entidade Conta
+# SEM utilização de classes
+# Armazenamento em dicionário
+# Validações feitas aqui (não no main)
+# ==============================
+
 from utils import gerar_id_conta
 
 contas = {}
