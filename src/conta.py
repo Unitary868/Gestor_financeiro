@@ -2,69 +2,92 @@
 # conta.py
 # CRUD simples para entidade Conta
 # SEM utilização de classes
-# armazenamento em dicionario
-# validações feitas aqui (não no main)
+# Armazenamento em dicionário
+# Validações feitas aqui (não no main)
 # ==============================
 
 from utils import gerar_id_conta
 
-contas = {}  # ← AGORA VÁRIAS CONTAS!
+contas = {}
+
+# Atributos da entidade Conta:
+#   id      → identificador único
+#   nome    → nome do utilizador
+#   nif     → número de identificação fiscal
+#   pin     → código de autenticação
+#   token   → identificador de sessão
 
 
-# CREATE
-def criar_conta(nome, nif, pin, saldo_inicial):
-    # Validações AQUI (como o prof)
+# ── Helpers internos ──────────────────────────────────────────
+
+def _validar_nif(nif):
+    return nif.isdigit() and len(nif) == 9
+
+def _validar_pin(pin):
+    return pin.isdigit() and len(pin) == 4
+
+
+# ── CREATE ────────────────────────────────────────────────────
+
+def criar_conta(nome, nif, pin):
     if len(nome.strip()) < 2:
-        return 400, "Nome deve ter pelo menos 2 caracteres"
-    if not (nif.isdigit() and len(nif) == 9):
-        return 400, "NIF inválido. Deve ter 9 dígitos"
-    if not (pin.isdigit() and len(pin) == 4):
-        return 400, "PIN inválido. Deve ter 4 dígitos"
-    if saldo_inicial < 0:
-        return 400, "Saldo inicial não pode ser negativo"
+        return 400, "Nome deve ter pelo menos 2 caracteres."
+    if not _validar_nif(nif):
+        return 400, "NIF inválido. Deve ter 9 dígitos."
+    if not _validar_pin(pin):
+        return 400, "PIN inválido. Deve ter 4 dígitos."
+
+    # Verificar NIF duplicado
+    for conta in contas.values():
+        if conta["nif"] == nif:
+            return 409, "Já existe uma conta com este NIF."
 
     id_conta = gerar_id_conta()
 
     conta = {
-        "nome": nome.strip(),
-        "nif": nif,
-        "pin": pin,
-        "saldo": saldo_inicial,
-        "token": f"USR-{id_conta}-ABC123"  # simplificado
+        "id":    id_conta,
+        "nome":  nome.strip(),
+        "nif":   nif,
+        "pin":   pin,
+        "token": f"USR-{id_conta}-ABC123",
     }
 
     contas[id_conta] = conta
     return 201, conta
 
 
-# READ (listar todas)
+# ── READ (listar todas) ───────────────────────────────────────
+
 def listar_contas():
     if not contas:
         return 404, "Não existem contas registadas."
     return 200, contas
 
 
-# READ (consultar individual)
+# ── READ (consultar individual) ───────────────────────────────
+
 def consultar_conta(id_conta):
     if id_conta not in contas:
         return 404, "Conta não encontrada."
     return 200, contas[id_conta]
 
 
-# UPDATE PIN
+# ── UPDATE PIN ────────────────────────────────────────────────
+
 def atualizar_pin(id_conta, pin_atual, pin_novo):
     if id_conta not in contas:
         return 404, "Conta não encontrada."
     if contas[id_conta]["pin"] != pin_atual:
         return 401, "PIN atual incorreto."
-    if not (pin_novo.isdigit() and len(pin_novo) == 4):
-        return 400, "Novo PIN inválido. Deve ter 4 dígitos"
+    if not _validar_pin(pin_novo):
+        return 400, "Novo PIN inválido. Deve ter 4 dígitos."
 
     contas[id_conta]["pin"] = pin_novo
     return 200, contas[id_conta]
 
 
-# DELETE
+# ── DELETE ────────────────────────────────────────────────────
+
 def eliminar_conta(id_conta, pin):
     if id_conta not in contas:
         return 404, "Conta não encontrada."
@@ -75,28 +98,7 @@ def eliminar_conta(id_conta, pin):
     return 200, id_conta
 
 
-# HELPERS para o main (como get_nome, get_id do teu main)
-def get_nome(id_conta=None):
-    if not contas:
-        return 404, "Nenhuma conta encontrada."
-    # Pega a primeira (ou a logada)
-    uid = id_conta or next(iter(contas))
-    return 200, contas[uid]["nome"]
-
-
-def get_id(id_conta=None):
-    if not contas:
-        return 404, "Nenhuma conta encontrada."
-    uid = id_conta or next(iter(contas))
-    return 200, uid
-
-
-def get_dados(id_conta=None):
-    if not contas:
-        return 404, "Nenhuma conta encontrada."
-    uid = id_conta or next(iter(contas))
-    return 200, contas[uid]
-
+# ── AUTH ──────────────────────────────────────────────────────
 
 def verificar_login(id_conta, pin):
     if id_conta not in contas:
@@ -106,5 +108,31 @@ def verificar_login(id_conta, pin):
     return 200, contas[id_conta]
 
 
+# ── HELPERS para o main ───────────────────────────────────────
+
+def _resolver_id(id_conta=None):
+    """Devolve o id a usar: o fornecido ou o primeiro existente."""
+    if not contas:
+        return None
+    return id_conta if id_conta in contas else next(iter(contas))
+
+def get_nome(id_conta=None):
+    uid = _resolver_id(id_conta)
+    if uid is None:
+        return 404, "Nenhuma conta encontrada."
+    return 200, contas[uid]["nome"]
+
+def get_id(id_conta=None):
+    uid = _resolver_id(id_conta)
+    if uid is None:
+        return 404, "Nenhuma conta encontrada."
+    return 200, uid
+
+def get_dados(id_conta=None):
+    uid = _resolver_id(id_conta)
+    if uid is None:
+        return 404, "Nenhuma conta encontrada."
+    return 200, contas[uid]
+
 def conta_existe():
-    return 200, bool(contas)
+    return bool(contas)
