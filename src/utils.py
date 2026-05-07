@@ -16,10 +16,10 @@ def pedir_num(msg, mn=None, mx=None, dec=True):
 
 # ── GERAÇÃO DE IDs ────────────────────────────────────────────
 def gerar_id_conta():
-    return random.randint(1000, 9999)
+    return f"C{random.randint(1, 999):03d}"
 
 def gerar_id_transacao():
-    return random.randint(10000, 99999)
+    return f"T{random.randint(1, 999):03d}"
 
 def gerar_id_orcamento():
     return f"O{random.randint(1, 999):03d}"
