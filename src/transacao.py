@@ -1,104 +1,154 @@
-# transacao.py – Entidade Transação
+# ==============================
+# transacao.py
+# CRUD simples para entidade Transação
+# SEM utilização de classes
+# Armazenamento em dicionário
+# Validações feitas aqui (não no main)
+# ==============================
 
-from utils import pedir_num, sep, cab, pausar
+from utils import gerar_id_transacao
 
-# ── Dados globais ─────────────────────────────────────────────
+transacoes = {}
 
-transacoes = []
-_id_t      = 0
+# Atributos da entidade Transação:
+#   id           → identificador único
+#   tipo         → "receita" ou "despesa"
+#   descricao    → descrição do movimento
+#   valor        → montante em euros
+#   categoria    → tipo de transação
+#   id_conta     → conta associada
+#   id_orcamento → orçamento associado (opcional)
 
 CATEGORIAS = (
-    "Alimentação", "Transporte", "Lazer",    "Saúde",
-    "Educação",    "Habitação",  "Vestuário", "Tecnologia",
-    "Poupança",    "Salário",    "Freelance", "Outros",
+    "Alimentação", "Transporte", "Lazer", "Saúde",
+    "Educação", "Habitação", "Vestuário", "Tecnologia",
+    "Poupança", "Salário", "Freelance", "Outros",
 )
 
-# ── CRUD ──────────────────────────────────────────────────────
 
-def adicionar_transacao(tipo, descricao, valor, categoria):
+# ── Helpers internos ──────────────────────────────────────────
+
+def _validar_valor(valor):
     try:
-        global _id_t
-        _id_t += 1
-        transacoes.append({
-            "id": _id_t, "tipo": tipo,
-            "descricao":
-            descricao, "valor":
-            valor, "categoria":
-            categoria
-        })
-        return (201, f"Transação #{_id_t} criada com sucesso.")
-    except Exception as e:
-        return (500, str(e))
+        return float(valor) > 0
+    except (TypeError, ValueError):
+        return False
 
-def encontrar_transacao(id_t):
-    try:
-        for i, t in enumerate(transacoes):
-            if t["id"] == id_t:
-                return (200, i, t)
-        return (404, f"Transação #{id_t} não encontrada.")
-    except Exception as e:
-        return (500, str(e))
 
-def editar_transacao(id_t, desc=None, valor=None, cat=None):
-    try:
-        rc = encontrar_transacao(id_t)
-        if rc[0] == 404:
-            return (404, f"Transação #{id_t} não encontrada.")
-        idx = rc[1]
-        if desc:
-            transacoes[idx]["descricao"] = desc
-        if valor:
-            transacoes[idx]["valor"]     = valor
-        if cat:
-            transacoes[idx]["categoria"] = cat
-        return (200, f"Transação #{id_t} atualizada com sucesso.")
-    except Exception as e:
-        return (500, str(e))
+# ── CREATE ────────────────────────────────────────────────────
 
-def apagar_transacao(id_t):
-    try:
-        rc = encontrar_transacao(id_t)
-        if rc[0] == 404:
-            return (404, f"Transação #{id_t} não encontrada.")
-        transacoes.pop(rc[1])
-        return (200, f"Transação #{id_t} apagada com sucesso.")
-    except Exception as e:
-        return (500, str(e))
+def adicionar_transacao(tipo, descricao, valor, categoria, id_conta, id_orcamento=None):
+    if tipo not in ("receita", "despesa"):
+        return 400, "Tipo inválido. Use 'receita' ou 'despesa'."
+    if len(descricao.strip()) < 2:
+        return 400, "Descrição deve ter pelo menos 2 caracteres."
+    if not _validar_valor(valor):
+        return 400, "Valor deve ser um número positivo."
+    if categoria not in CATEGORIAS:
+        return 400, f"Categoria inválida. Opções: {', '.join(CATEGORIAS)}."
+    if not id_conta:
+        return 400, "id_conta é obrigatório."
 
-def listar_transacoes(filtro="todas", categoria=None):
-    try:
-        if filtro == "receitas":
-            lst = [t for t in transacoes if t["tipo"] == "receita"]
-        elif filtro == "despesas":
-            lst = [t for t in transacoes if t["tipo"] == "despesa"]
-        elif filtro == "categoria" and categoria:
-            lst = [t for t in transacoes if t["categoria"] == categoria]
-        else:
-            lst = list(transacoes)
-        return (200, lst)
-    except Exception as e:
-        return (500, str(e))
+    id_transacao = gerar_id_transacao()
 
-def totais(lista):
-    try:
-        r = sum(t["valor"] for t in lista if t["tipo"] == "receita")
-        d = sum(t["valor"] for t in lista if t["tipo"] == "despesa")
-        return (200, r, d)
-    except Exception as e:
-        return (500, str(e))
+    transacao = {
+        "id":           id_transacao,
+        "tipo":         tipo,
+        "descricao":    descricao.strip(),
+        "valor":        float(valor),
+        "categoria":    categoria,
+        "id_conta":     id_conta,
+        "id_orcamento": id_orcamento,   # pode ser None
+    }
 
-def calcular_saldo():
-    try:
-        total = 0.0
-        for t in transacoes:
-            total += t["valor"] if t["tipo"] == "receita" else -t["valor"]
-        return (200, total)
-    except Exception as e:
-        return (500, str(e))
+    transacoes[id_transacao] = transacao
+    return 201, transacao
 
-# ── Helper UI ─────────────────────────────────────────────────
 
-def escolher_cat():
-    for i, c in enumerate(CATEGORIAS, 1):
-        print(f"    {i:2}. {c}")
-    return CATEGORIAS[int(pedir_num(f"  Categoria (1-{len(CATEGORIAS)}): ", 1, len(CATEGORIAS), False)) - 1]
+# ── READ (individual) ─────────────────────────────────────────
+
+def encontrar_transacao(id_transacao):
+    if id_transacao not in transacoes:
+        return 404, f"Transação {id_transacao} não encontrada."
+    return 200, transacoes[id_transacao]
+
+
+# ── READ (lista) ──────────────────────────────────────────────
+
+def listar_transacoes(id_conta=None, filtro="todas", categoria=None):
+    if not transacoes:
+        return 404, "Não existem transações registadas."
+
+    resultado = {}
+    for id_t, t in transacoes.items():
+        if id_conta and t["id_conta"] != id_conta:
+            continue
+        if filtro == "receitas" and t["tipo"] != "receita":
+            continue
+        if filtro == "despesas" and t["tipo"] != "despesa":
+            continue
+        if filtro == "categoria" and t["categoria"] != categoria:
+            continue
+        resultado[id_t] = t
+
+    if not resultado:
+        return 404, "Nenhuma transação encontrada com esse filtro."
+    return 200, list(resultado.values())
+
+
+# ── UPDATE ────────────────────────────────────────────────────
+
+def editar_transacao(id_transacao, descricao=None, valor=None, categoria=None, id_orcamento=None):
+    if id_transacao not in transacoes:
+        return 404, f"Transação {id_transacao} não encontrada."
+
+    if descricao is not None:
+        if len(descricao.strip()) < 2:
+            return 400, "Descrição deve ter pelo menos 2 caracteres."
+        transacoes[id_transacao]["descricao"] = descricao.strip()
+
+    if valor is not None:
+        if not _validar_valor(valor):
+            return 400, "Valor deve ser um número positivo."
+        transacoes[id_transacao]["valor"] = float(valor)
+
+    if categoria is not None:
+        if categoria not in CATEGORIAS:
+            return 400, f"Categoria inválida. Opções: {', '.join(CATEGORIAS)}."
+        transacoes[id_transacao]["categoria"] = categoria
+
+    if id_orcamento is not None:
+        transacoes[id_transacao]["id_orcamento"] = id_orcamento
+
+    return 200, transacoes[id_transacao]
+
+
+# ── DELETE ────────────────────────────────────────────────────
+
+def apagar_transacao(id_transacao):
+    if id_transacao not in transacoes:
+        return 404, f"Transação {id_transacao} não encontrada."
+    del transacoes[id_transacao]
+    return 200, f"Transação {id_transacao} removida com sucesso."
+
+
+# ── HELPERS para o main ───────────────────────────────────────
+
+def calcular_saldo(id_conta):
+    """Calcula o saldo de uma conta somando receitas e subtraindo despesas."""
+    total = 0.0
+    for t in transacoes.values():
+        if t["id_conta"] != id_conta:
+            continue
+        total += t["valor"] if t["tipo"] == "receita" else -t["valor"]
+    return 200, total
+
+def totais(id_conta=None):
+    """Devolve (receitas_total, despesas_total) opcionalmente filtrado por conta."""
+    lista = [
+        t for t in transacoes.values()
+        if id_conta is None or t["id_conta"] == id_conta
+    ]
+    receitas  = sum(t["valor"] for t in lista if t["tipo"] == "receita")
+    despesas  = sum(t["valor"] for t in lista if t["tipo"] == "despesa")
+    return 200, receitas, despesas

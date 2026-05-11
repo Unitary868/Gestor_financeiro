@@ -1,165 +1,138 @@
-# conta.py – Entidade Conta
-import random, string
-from utils import pedir_num, pedir_texto, sep, cab, pausar
+# ==============================
+# conta.py
+# CRUD simples para entidade Conta
+# SEM utilização de classes
+# Armazenamento em dicionário
+# Validações feitas aqui (não no main)
+# ==============================
 
-# ── Dados globais ─────────────────────────────────────────────
-conta = {}
+from utils import gerar_id_conta
+
+contas = {}
+
+# Atributos da entidade Conta:
+#   id      → identificador único
+#   nome    → nome do utilizador
+#   nif     → número de identificação fiscal
+#   pin     → código de autenticação
+#   token   → identificador de sessão
+
 
 # ── Helpers internos ──────────────────────────────────────────
-def gerar_id():
-    return random.randint(1000, 9999)
 
-def gerar_token(uid):
-    l = "".join(random.choices(string.ascii_uppercase, k=3))
-    n = "".join(random.choices(string.digits, k=3))
-    return f"USR-{uid}-{l}{n}"
+def _validar_nif(nif):
+    return nif.isdigit() and len(nif) == 9
 
-def pedir_pin():
-    while True:
-        p = input("  PIN (4 dígitos): ").strip()
-        if p.isdigit() and len(p) == 4:
-            return p
-        print("  400 - Bad Request: PIN inválido, deve ter 4 dígitos.")
+def _validar_pin(pin):
+    return pin.isdigit() and len(pin) == 4
 
-# ── CRUD ──────────────────────────────────────────────────────
+
+# ── CREATE ────────────────────────────────────────────────────
+
 def criar_conta(nome, nif, pin):
-    try:
-        if conta:
-            return (409, "Já existe uma conta criada.")
-        uid   = gerar_id()
-        token = gerar_token(uid)
-        conta["id"]    = uid
-        conta["nome"]  = nome
-        conta["nif"]   = nif
-        conta["pin"]   = pin
-        conta["token"] = token
-        return (201, f"Conta criada com sucesso.\n  ID:    {uid}\n  Token: {token}")
-    except Exception as e:
-        return (500, str(e))
+    if len(nome.strip()) < 2:
+        return 400, "Nome deve ter pelo menos 2 caracteres."
+    if not _validar_nif(nif):
+        return 400, "NIF inválido. Deve ter 9 dígitos."
+    if not _validar_pin(pin):
+        return 400, "PIN inválido. Deve ter 4 dígitos."
+
+    # Verificar NIF duplicado
+    for conta in contas.values():
+        if conta["nif"] == nif:
+            return 409, "Já existe uma conta com este NIF."
+
+    id_conta = gerar_id_conta()
+
+    conta = {
+        "id":    id_conta,
+        "nome":  nome.strip(),
+        "nif":   nif,
+        "pin":   pin,
+        "token": f"USR-{id_conta}-ABC123",
+    }
+
+    contas[id_conta] = conta
+    return 201, conta
+
+
+# ── READ (listar todas) ───────────────────────────────────────
+
+def listar_contas():
+    if not contas:
+        return 404, "Não existem contas registadas."
+    return 200, contas
+
+
+# ── READ (consultar individual) ───────────────────────────────
+
+def consultar_conta(id_conta):
+    if id_conta not in contas:
+        return 404, "Conta não encontrada."
+    return 200, contas[id_conta]
+
+
+# ── UPDATE PIN ────────────────────────────────────────────────
+
+def atualizar_pin(id_conta, pin_atual, pin_novo):
+    if id_conta not in contas:
+        return 404, "Conta não encontrada."
+    if contas[id_conta]["pin"] != pin_atual:
+        return 401, "PIN atual incorreto."
+    if not _validar_pin(pin_novo):
+        return 400, "Novo PIN inválido. Deve ter 4 dígitos."
+
+    contas[id_conta]["pin"] = pin_novo
+    return 200, contas[id_conta]
+
+
+# ── DELETE ────────────────────────────────────────────────────
+
+def eliminar_conta(id_conta, pin):
+    if id_conta not in contas:
+        return 404, "Conta não encontrada."
+    if contas[id_conta]["pin"] != pin:
+        return 401, "PIN incorreto."
+
+    del contas[id_conta]
+    return 200, id_conta
+
+
+# ── AUTH ──────────────────────────────────────────────────────
+
+def verificar_login(id_conta, pin):
+    if id_conta not in contas:
+        return 404, "Conta não encontrada."
+    if contas[id_conta]["pin"] != pin:
+        return 401, "PIN incorreto."
+    return 200, contas[id_conta]
+
+
+# ── HELPERS para o main ───────────────────────────────────────
+
+def _resolver_id(id_conta=None):
+    """Devolve o id a usar: o fornecido ou o primeiro existente."""
+    if not contas:
+        return None
+    return id_conta if id_conta in contas else next(iter(contas))
+
+def get_nome(id_conta=None):
+    uid = _resolver_id(id_conta)
+    if uid is None:
+        return 404, "Nenhuma conta encontrada."
+    return 200, contas[uid]["nome"]
+
+def get_id(id_conta=None):
+    uid = _resolver_id(id_conta)
+    if uid is None:
+        return 404, "Nenhuma conta encontrada."
+    return 200, uid
+
+def get_dados(id_conta=None):
+    uid = _resolver_id(id_conta)
+    if uid is None:
+        return 404, "Nenhuma conta encontrada."
+    return 200, contas[uid]
 
 def conta_existe():
-    try:
-        return (200, bool(conta))
-    except Exception as e:
-        return (500, str(e))
-
-def verificar_login(uid, pin):
-    try:
-        if not conta:
-            return (404, "Nenhuma conta encontrada.")
-        if conta.get("id") == uid and conta.get("pin") == pin:
-            return (200, "Login bem-sucedido.")
-        return (401, "ID ou PIN incorretos.")
-    except Exception as e:
-        return (500, str(e))
-
-def atualizar_pin(uid, pin_atual, pin_novo):
-    try:
-        status, msg = verificar_login(uid, pin_atual)
-        if status != 200:
-            return (status, msg)
-        conta["pin"] = pin_novo
-        return (200, "PIN atualizado com sucesso.")
-    except Exception as e:
-        return (500, str(e))
-
-def eliminar_conta(uid, pin):
-    try:
-        status, msg = verificar_login(uid, pin)
-        if status != 200:
-            return (status, msg)
-        conta.clear()
-        return (200, "Conta eliminada com sucesso.")
-    except Exception as e:
-        return (500, str(e))
-
-def get_dados():
-    try:
-        if not conta:
-            return (404, "Nenhuma conta encontrada.")
-        return (200, {
-            "id":
-            conta.get("id",    "—"),
-            "nome":
-            conta.get("nome",  "—"),
-            "nif":
-            conta.get("nif",   "—"),
-            "token":
-            conta.get("token", "—"),
-        })
-    except Exception as e:
-        return (500, str(e))
-
-def get_nome():
-    try:
-        if not conta:
-            return (404, "Nenhuma conta encontrada.")
-        return (200, conta.get("nome", "—"))
-    except Exception as e:
-        return (500, str(e))
-
-def get_id():
-    try:
-        if not conta:
-            return (404, "Nenhuma conta encontrada.")
-        return (200, conta.get("id", "—"))
-    except Exception as e:
-        return (500, str(e))
-
-def get_token():
-    try:
-        if not conta:
-            return (404, "Nenhuma conta encontrada.")
-        return (200, conta.get("token", "—"))
-    except Exception as e:
-        return (500, str(e))
-
-# ── Menu Conta ────────────────────────────────────────────────
-def menu_conta():
-    while True:
-        cab("👤 CONTA")
-        id_rc   = get_id()
-        dados_rc = get_dados()
-        uid = id_rc[1] if id_rc[0] == 200 else None
-
-        if dados_rc[0] == 200:
-            d = dados_rc[1]
-            sep()
-            print(f"  👤 Nome:  {d['nome']}")
-            print(f"  🆔 ID:    {d['id']}")
-            print(f"  📋 NIF:   {d['nif']}")
-            print(f"  🔑 Token: {d['token']}")
-            sep()
-
-        print("  1-Atualizar PIN   2-Eliminar Conta   0-Voltar")
-        sep()
-        o = input("\n  Opção: ").strip()
-
-        if o == "0":
-            break
-
-        elif o == "1":
-            cab("🔑 ATUALIZAR PIN")
-            pin_atual = pedir_pin()
-            pin_novo  = pedir_pin()
-            rc = atualizar_pin(uid, pin_atual, pin_novo)
-            print(f"  {rc[0]} - {rc[1]}")
-            pausar()
-
-        elif o == "2":
-            cab("🗑️ ELIMINAR CONTA")
-            pin = pedir_pin()
-            if input("  Tens a certeza? Todos os dados serão apagados (s/n): ").strip().lower() != "s":
-                print("  ❌ Cancelado.")
-                pausar()
-                continue
-            rc = eliminar_conta(uid, pin)
-            print(f"  {rc[0]} - {rc[1]}")
-            pausar()
-            if rc[0] == 200:
-                return True   # sinaliza ao main que a conta foi eliminada
-
-        else:
-            print("  400 - Bad Request: Opção inválida.")
-
-    return False
+    return bool(contas)
