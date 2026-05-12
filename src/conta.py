@@ -1,11 +1,3 @@
-# ==============================
-# conta.py
-# CRUD simples para entidade Conta
-# SEM utilização de classes
-# Armazenamento em dicionário
-# Validações feitas aqui (não no main)
-# ==============================
-
 import json
 import os
 from utils import gerar_id_conta, gerar_token
