@@ -8,7 +8,7 @@
 
 import json
 import os
-from utils import gerar_id_conta
+from utils import gerar_id_conta, gerar_token
 
 contas = {}
 
@@ -22,6 +22,24 @@ FICHEIRO_CONTAS = "contas.json"
 #   token   → identificador de sessão
 
 
+# ── Persistência interna ──────────────────────────────────────
+
+def _guardar():
+    with open(FICHEIRO_CONTAS, "w", encoding="utf-8") as f:
+        json.dump(contas, f, indent=4, ensure_ascii=False)
+
+def carregar_contas():
+    global contas
+    if os.path.exists(FICHEIRO_CONTAS):
+        with open(FICHEIRO_CONTAS, "r", encoding="utf-8") as f:
+            contas = json.load(f)
+    else:
+        contas = {}
+
+# Carrega automaticamente ao importar o módulo
+carregar_contas()
+
+
 # ── Helpers internos ──────────────────────────────────────────
 
 def _validar_nif(nif):
@@ -29,6 +47,12 @@ def _validar_nif(nif):
 
 def _validar_pin(pin):
     return pin.isdigit() and len(pin) == 4
+
+def _gerar_id_unico():
+    novo = gerar_id_conta()
+    while novo in contas:
+        novo = gerar_id_conta()
+    return novo
 
 
 # ── CREATE ────────────────────────────────────────────────────
@@ -41,22 +65,22 @@ def criar_conta(nome, nif, pin):
     if not _validar_pin(pin):
         return 400, "PIN inválido. Deve ter 4 dígitos."
 
-    # Verificar NIF duplicado
     for conta in contas.values():
         if conta["nif"] == nif:
             return 409, "Já existe uma conta com este NIF."
 
-    id_conta = gerar_id_conta()
+    id_conta = _gerar_id_unico()
 
     conta = {
         "id":    id_conta,
         "nome":  nome.strip(),
         "nif":   nif,
         "pin":   pin,
-        "token": f"USR-{id_conta}-ABC123",
+        "token": gerar_token(id_conta),
     }
 
     contas[id_conta] = conta
+    _guardar()
     return 201, conta
 
 
@@ -87,6 +111,7 @@ def atualizar_pin(id_conta, pin_atual, pin_novo):
         return 400, "Novo PIN inválido. Deve ter 4 dígitos."
 
     contas[id_conta]["pin"] = pin_novo
+    _guardar()
     return 200, contas[id_conta]
 
 
@@ -99,6 +124,7 @@ def eliminar_conta(id_conta, pin):
         return 401, "PIN incorreto."
 
     del contas[id_conta]
+    _guardar()
     return 200, id_conta
 
 
@@ -115,7 +141,6 @@ def verificar_login(id_conta, pin):
 # ── HELPERS para o main ───────────────────────────────────────
 
 def _resolver_id(id_conta=None):
-    """Devolve o id a usar: o fornecido ou o primeiro existente."""
     if not contas:
         return None
     return id_conta if id_conta in contas else next(iter(contas))
@@ -141,18 +166,6 @@ def get_dados(id_conta=None):
 def conta_existe():
     return bool(contas)
 
-
-# ── PERSISTÊNCIA ──────────────────────────────────────────────
-
+# Compatibilidade com chamadas explícitas do main
 def guardar_contas():
-    with open(FICHEIRO_CONTAS, "w", encoding="utf-8") as ficheiro:
-        json.dump(contas, ficheiro, indent=4, ensure_ascii=False)
-
-def carregar_contas():
-    global contas
-
-    if os.path.exists(FICHEIRO_CONTAS):
-        with open(FICHEIRO_CONTAS, "r", encoding="utf-8") as ficheiro:
-            contas = json.load(ficheiro)
-    else:
-        contas = {}
+    _guardar()
