@@ -6,9 +6,13 @@
 # Validações feitas aqui (não no main)
 # ==============================
 
+import json
+import os
 from utils import gerar_id_transacao
 
 transacoes = {}
+
+FICHEIRO_TRANSACOES = "transacoes.json"
 
 # Atributos da entidade Transação:
 #   id           → identificador único
@@ -152,3 +156,19 @@ def totais(id_conta=None):
     receitas  = sum(t["valor"] for t in lista if t["tipo"] == "receita")
     despesas  = sum(t["valor"] for t in lista if t["tipo"] == "despesa")
     return 200, receitas, despesas
+
+
+# ── PERSISTÊNCIA ──────────────────────────────────────────────
+
+def guardar_transacoes():
+    with open(FICHEIRO_TRANSACOES, "w", encoding="utf-8") as ficheiro:
+        json.dump(transacoes, ficheiro, indent=4, ensure_ascii=False)
+
+def carregar_transacoes():
+    global transacoes
+
+    if os.path.exists(FICHEIRO_TRANSACOES):
+        with open(FICHEIRO_TRANSACOES, "r", encoding="utf-8") as ficheiro:
+            transacoes = json.load(ficheiro)
+    else:
+        transacoes = {}
