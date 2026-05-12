@@ -1,7 +1,10 @@
-
+import json
+import os
 from utils import gerar_id_pagamento
 
 pagamentos = {}
+
+FICHEIRO_PAGAMENTOS = "pagamentos.json"
 
 # Atributos da entidade Pagamento:
 #   id           → identificador único
@@ -140,3 +143,19 @@ def pagamentos_por_metodo():
     for p in pagamentos.values():
         resumo[p["metodo"]] = resumo.get(p["metodo"], 0.0) + p["valor"]
     return 200, {k: round(v, 2) for k, v in resumo.items()}
+
+
+# ── PERSISTÊNCIA ──────────────────────────────────────────────
+
+def guardar_pagamentos():
+    with open(FICHEIRO_PAGAMENTOS, "w", encoding="utf-8") as ficheiro:
+        json.dump(pagamentos, ficheiro, indent=4, ensure_ascii=False)
+
+def carregar_pagamentos():
+    global pagamentos
+
+    if os.path.exists(FICHEIRO_PAGAMENTOS):
+        with open(FICHEIRO_PAGAMENTOS, "r", encoding="utf-8") as ficheiro:
+            pagamentos = json.load(ficheiro)
+    else:
+        pagamentos = {}
