@@ -17,6 +17,21 @@ FICHEIRO_PAGAMENTOS = "pagamentos.json"
 METODOS_PAG = ("MB Way", "Transferência", "Multibanco", "Dinheiro", "Cartão")
 
 
+# ── Persistência ──────────────────────────────────────────────
+
+def guardar_pagamentos():
+    with open(FICHEIRO_PAGAMENTOS, "w", encoding="utf-8") as ficheiro:
+        json.dump(pagamentos, ficheiro, indent=4, ensure_ascii=False)
+
+def carregar_pagamentos():
+    global pagamentos
+    if os.path.exists(FICHEIRO_PAGAMENTOS):
+        with open(FICHEIRO_PAGAMENTOS, "r", encoding="utf-8") as ficheiro:
+            pagamentos = json.load(ficheiro)
+    else:
+        pagamentos = {}
+
+
 # ── Helpers internos ──────────────────────────────────────────
 
 def _validar_valor(valor):
@@ -40,6 +55,8 @@ def _validar_data(data_texto):
 # ── CREATE ────────────────────────────────────────────────────
 
 def criar_pagamento(descricao, valor, data, metodo, id_transacao=None):
+    carregar_pagamentos()
+
     if not descricao or not descricao.strip():
         return 400, "Descrição obrigatória."
     if not _validar_valor(valor):
@@ -57,16 +74,19 @@ def criar_pagamento(descricao, valor, data, metodo, id_transacao=None):
         "valor":        float(valor),
         "data":         data,
         "metodo":       metodo,
-        "id_transacao": id_transacao,   # pode ser None
+        "id_transacao": id_transacao,
     }
 
     pagamentos[id_pagamento] = pagamento
+    guardar_pagamentos()
     return 201, pagamento
 
 
 # ── READ (listar todos) ───────────────────────────────────────
 
 def listar_pagamentos(metodo=None):
+    carregar_pagamentos()
+
     if not pagamentos:
         return 404, "Não existem pagamentos registados."
 
@@ -84,6 +104,8 @@ def listar_pagamentos(metodo=None):
 # ── READ (consultar individual) ───────────────────────────────
 
 def consultar_pagamento(id_pagamento):
+    carregar_pagamentos()
+
     if id_pagamento not in pagamentos:
         return 404, "Pagamento não encontrado."
     return 200, pagamentos[id_pagamento]
@@ -92,6 +114,8 @@ def consultar_pagamento(id_pagamento):
 # ── UPDATE ────────────────────────────────────────────────────
 
 def atualizar_pagamento(id_pagamento, descricao=None, valor=None, data=None, metodo=None, id_transacao=None):
+    carregar_pagamentos()
+
     if id_pagamento not in pagamentos:
         return 404, "Pagamento não encontrado."
 
@@ -118,44 +142,35 @@ def atualizar_pagamento(id_pagamento, descricao=None, valor=None, data=None, met
     if id_transacao is not None:
         pagamentos[id_pagamento]["id_transacao"] = id_transacao
 
+    guardar_pagamentos()
     return 200, pagamentos[id_pagamento]
 
 
 # ── DELETE ────────────────────────────────────────────────────
 
 def remover_pagamento(id_pagamento):
+    carregar_pagamentos()
+
     if id_pagamento not in pagamentos:
         return 404, "Pagamento não encontrado."
+
     del pagamentos[id_pagamento]
+    guardar_pagamentos()
     return 200, id_pagamento
 
 
 # ── HELPERS para o main ───────────────────────────────────────
 
 def total_pagamentos():
-    """Devolve o total gasto em pagamentos."""
+    carregar_pagamentos()
+
     total = sum(v["valor"] for v in pagamentos.values())
     return 200, round(total, 2)
 
 def pagamentos_por_metodo():
-    """Agrupa e soma os pagamentos por método."""
+    carregar_pagamentos()
+
     resumo = {}
     for p in pagamentos.values():
         resumo[p["metodo"]] = resumo.get(p["metodo"], 0.0) + p["valor"]
     return 200, {k: round(v, 2) for k, v in resumo.items()}
-
-
-# ── PERSISTÊNCIA ──────────────────────────────────────────────
-
-def guardar_pagamentos():
-    with open(FICHEIRO_PAGAMENTOS, "w", encoding="utf-8") as ficheiro:
-        json.dump(pagamentos, ficheiro, indent=4, ensure_ascii=False)
-
-def carregar_pagamentos():
-    global pagamentos
-
-    if os.path.exists(FICHEIRO_PAGAMENTOS):
-        with open(FICHEIRO_PAGAMENTOS, "r", encoding="utf-8") as ficheiro:
-            pagamentos = json.load(ficheiro)
-    else:
-        pagamentos = {}
