@@ -1,7 +1,10 @@
-
+import json
+import os
 from utils import gerar_id_orcamento
 
 orcamentos = {}
+
+FICHEIRO_ORCAMENTOS = "orcamentos.json"
 
 # Atributos da entidade Orçamento:
 #   id          → identificador único
@@ -130,3 +133,19 @@ def registar_gasto(id_orcamento, valor):
     if restante < 0:
         return 200, f"AVISO: Orçamento '{categoria}' excedido em {abs(round(restante, 2))}€!"
     return 200, f"Gasto registado. Restam {round(restante, 2)}€ no orçamento '{categoria}'."
+
+
+# ── PERSISTÊNCIA ──────────────────────────────────────────────
+
+def guardar_orcamentos():
+    with open(FICHEIRO_ORCAMENTOS, "w", encoding="utf-8") as ficheiro:
+        json.dump(orcamentos, ficheiro, indent=4, ensure_ascii=False)
+
+def carregar_orcamentos():
+    global orcamentos
+
+    if os.path.exists(FICHEIRO_ORCAMENTOS):
+        with open(FICHEIRO_ORCAMENTOS, "r", encoding="utf-8") as ficheiro:
+            orcamentos = json.load(ficheiro)
+    else:
+        orcamentos = {}
