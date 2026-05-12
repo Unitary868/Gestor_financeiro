@@ -6,9 +6,13 @@
 # Validações feitas aqui (não no main)
 # ==============================
 
+import json
+import os
 from utils import gerar_id_conta
 
 contas = {}
+
+FICHEIRO_CONTAS = "contas.json"
 
 # Atributos da entidade Conta:
 #   id      → identificador único
@@ -136,3 +140,19 @@ def get_dados(id_conta=None):
 
 def conta_existe():
     return bool(contas)
+
+
+# ── PERSISTÊNCIA ──────────────────────────────────────────────
+
+def guardar_contas():
+    with open(FICHEIRO_CONTAS, "w", encoding="utf-8") as ficheiro:
+        json.dump(contas, ficheiro, indent=4, ensure_ascii=False)
+
+def carregar_contas():
+    global contas
+
+    if os.path.exists(FICHEIRO_CONTAS):
+        with open(FICHEIRO_CONTAS, "r", encoding="utf-8") as ficheiro:
+            contas = json.load(ficheiro)
+    else:
+        contas = {}
