@@ -142,6 +142,7 @@ def verificar_login(id_conta, pin):
 # ── HELPERS para o main ───────────────────────────────────────
 
 def _resolver_id(id_conta=None):
+    carregar_contas()
     if not contas:
         return None
     return id_conta if id_conta in contas else next(iter(contas))
@@ -154,7 +155,6 @@ def get_nome(id_conta=None):
     return 200, contas[uid]["nome"]
 
 def get_id(id_conta=None):
-    carregar_contas()
     uid = _resolver_id(id_conta)
     if uid is None:
         return 404, "Nenhuma conta encontrada."
