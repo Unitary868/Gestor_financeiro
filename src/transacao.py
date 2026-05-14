@@ -1,14 +1,10 @@
-# ==============================
-# transacao.py
-# CRUD simples para entidade Transação
-# SEM utilização de classes
-# Armazenamento em dicionário
-# Validações feitas aqui (não no main)
-# ==============================
-
+import json
+import os
 from utils import gerar_id_transacao
 
 transacoes = {}
+
+FICHEIRO_TRANSACOES = "transacoes.json"
 
 # Atributos da entidade Transação:
 #   id           → identificador único
@@ -26,6 +22,21 @@ CATEGORIAS = (
 )
 
 
+# ── Persistência ──────────────────────────────────────────────
+
+def guardar_transacoes():
+    with open(FICHEIRO_TRANSACOES, "w", encoding="utf-8") as ficheiro:
+        json.dump(transacoes, ficheiro, indent=4, ensure_ascii=False)
+
+def carregar_transacoes():
+    global transacoes
+    if os.path.exists(FICHEIRO_TRANSACOES):
+        with open(FICHEIRO_TRANSACOES, "r", encoding="utf-8") as ficheiro:
+            transacoes = json.load(ficheiro)
+    else:
+        transacoes = {}
+
+
 # ── Helpers internos ──────────────────────────────────────────
 
 def _validar_valor(valor):
@@ -38,6 +49,8 @@ def _validar_valor(valor):
 # ── CREATE ────────────────────────────────────────────────────
 
 def adicionar_transacao(tipo, descricao, valor, categoria, id_conta, id_orcamento=None):
+    carregar_transacoes()
+
     if tipo not in ("receita", "despesa"):
         return 400, "Tipo inválido. Use 'receita' ou 'despesa'."
     if len(descricao.strip()) < 2:
@@ -58,16 +71,19 @@ def adicionar_transacao(tipo, descricao, valor, categoria, id_conta, id_orcament
         "valor":        float(valor),
         "categoria":    categoria,
         "id_conta":     id_conta,
-        "id_orcamento": id_orcamento,   # pode ser None
+        "id_orcamento": id_orcamento,
     }
 
     transacoes[id_transacao] = transacao
+    guardar_transacoes()
     return 201, transacao
 
 
 # ── READ (individual) ─────────────────────────────────────────
 
 def encontrar_transacao(id_transacao):
+    carregar_transacoes()
+
     if id_transacao not in transacoes:
         return 404, f"Transação {id_transacao} não encontrada."
     return 200, transacoes[id_transacao]
@@ -76,6 +92,8 @@ def encontrar_transacao(id_transacao):
 # ── READ (lista) ──────────────────────────────────────────────
 
 def listar_transacoes(id_conta=None, filtro="todas", categoria=None):
+    carregar_transacoes()
+
     if not transacoes:
         return 404, "Não existem transações registadas."
 
@@ -99,6 +117,8 @@ def listar_transacoes(id_conta=None, filtro="todas", categoria=None):
 # ── UPDATE ────────────────────────────────────────────────────
 
 def editar_transacao(id_transacao, descricao=None, valor=None, categoria=None, id_orcamento=None):
+    carregar_transacoes()
+
     if id_transacao not in transacoes:
         return 404, f"Transação {id_transacao} não encontrada."
 
@@ -120,22 +140,28 @@ def editar_transacao(id_transacao, descricao=None, valor=None, categoria=None, i
     if id_orcamento is not None:
         transacoes[id_transacao]["id_orcamento"] = id_orcamento
 
+    guardar_transacoes()
     return 200, transacoes[id_transacao]
 
 
 # ── DELETE ────────────────────────────────────────────────────
 
 def apagar_transacao(id_transacao):
+    carregar_transacoes()
+
     if id_transacao not in transacoes:
         return 404, f"Transação {id_transacao} não encontrada."
+
     del transacoes[id_transacao]
+    guardar_transacoes()
     return 200, f"Transação {id_transacao} removida com sucesso."
 
 
 # ── HELPERS para o main ───────────────────────────────────────
 
 def calcular_saldo(id_conta):
-    """Calcula o saldo de uma conta somando receitas e subtraindo despesas."""
+    carregar_transacoes()
+
     total = 0.0
     for t in transacoes.values():
         if t["id_conta"] != id_conta:
@@ -144,11 +170,12 @@ def calcular_saldo(id_conta):
     return 200, total
 
 def totais(id_conta=None):
-    """Devolve (receitas_total, despesas_total) opcionalmente filtrado por conta."""
+    carregar_transacoes()
+
     lista = [
         t for t in transacoes.values()
         if id_conta is None or t["id_conta"] == id_conta
     ]
-    receitas  = sum(t["valor"] for t in lista if t["tipo"] == "receita")
-    despesas  = sum(t["valor"] for t in lista if t["tipo"] == "despesa")
+    receitas = sum(t["valor"] for t in lista if t["tipo"] == "receita")
+    despesas = sum(t["valor"] for t in lista if t["tipo"] == "despesa")
     return 200, receitas, despesas

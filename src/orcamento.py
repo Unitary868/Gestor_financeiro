@@ -1,7 +1,10 @@
-
+import json
+import os
 from utils import gerar_id_orcamento
 
 orcamentos = {}
+
+FICHEIRO_ORCAMENTOS = "orcamentos.json"
 
 # Atributos da entidade Orçamento:
 #   id          → identificador único
@@ -17,6 +20,21 @@ CATEGORIAS_ORC = (
 )
 
 PERIODOS = ("diário", "semanal", "mensal", "anual")
+
+
+# ── Persistência ──────────────────────────────────────────────
+
+def guardar_orcamentos():
+    with open(FICHEIRO_ORCAMENTOS, "w", encoding="utf-8") as ficheiro:
+        json.dump(orcamentos, ficheiro, indent=4, ensure_ascii=False)
+
+def carregar_orcamentos():
+    global orcamentos
+    if os.path.exists(FICHEIRO_ORCAMENTOS):
+        with open(FICHEIRO_ORCAMENTOS, "r", encoding="utf-8") as ficheiro:
+            orcamentos = json.load(ficheiro)
+    else:
+        orcamentos = {}
 
 
 # ── Helpers internos ──────────────────────────────────────────
@@ -37,6 +55,8 @@ def _validar_periodo(periodo):
 # ── CREATE ────────────────────────────────────────────────────
 
 def criar_orcamento(categoria, limite, periodo):
+    carregar_orcamentos()
+
     if not _validar_categoria(categoria):
         return 400, f"Categoria inválida. Opções: {', '.join(CATEGORIAS_ORC)}."
     if not _validar_valor(limite):
@@ -44,7 +64,6 @@ def criar_orcamento(categoria, limite, periodo):
     if not _validar_periodo(periodo):
         return 400, f"Período inválido. Opções: {', '.join(PERIODOS)}."
 
-    # Não permitir duplicado de categoria + período
     for oid, o in orcamentos.items():
         if o["categoria"] == categoria and o["periodo"] == periodo:
             return 409, f"Já existe um orçamento para '{categoria}' ({periodo}) com ID {oid}."
@@ -60,12 +79,15 @@ def criar_orcamento(categoria, limite, periodo):
     }
 
     orcamentos[id_orcamento] = orcamento
+    guardar_orcamentos()
     return 201, orcamento
 
 
 # ── READ (listar todos) ───────────────────────────────────────
 
 def listar_orcamentos():
+    carregar_orcamentos()
+
     if not orcamentos:
         return 404, "Não existem orçamentos registados."
     return 200, orcamentos
@@ -74,6 +96,8 @@ def listar_orcamentos():
 # ── READ (consultar individual) ───────────────────────────────
 
 def consultar_orcamento(id_orcamento):
+    carregar_orcamentos()
+
     if id_orcamento not in orcamentos:
         return 404, "Orçamento não encontrado."
     return 200, orcamentos[id_orcamento]
@@ -82,6 +106,8 @@ def consultar_orcamento(id_orcamento):
 # ── UPDATE ────────────────────────────────────────────────────
 
 def atualizar_orcamento(id_orcamento, limite=None, categoria=None, periodo=None):
+    carregar_orcamentos()
+
     if id_orcamento not in orcamentos:
         return 404, "Orçamento não encontrado."
 
@@ -103,21 +129,28 @@ def atualizar_orcamento(id_orcamento, limite=None, categoria=None, periodo=None)
             return 400, f"Período inválido. Opções: {', '.join(PERIODOS)}."
         orcamentos[id_orcamento]["periodo"] = periodo
 
+    guardar_orcamentos()
     return 200, orcamentos[id_orcamento]
 
 
 # ── DELETE ────────────────────────────────────────────────────
 
 def remover_orcamento(id_orcamento):
+    carregar_orcamentos()
+
     if id_orcamento not in orcamentos:
         return 404, "Orçamento não encontrado."
+
     del orcamentos[id_orcamento]
+    guardar_orcamentos()
     return 200, id_orcamento
 
 
 # ── Registar gasto (chamado ao adicionar uma despesa) ────────
 
 def registar_gasto(id_orcamento, valor):
+    carregar_orcamentos()
+
     if id_orcamento not in orcamentos:
         return 404, "Orçamento não encontrado."
     if not _validar_valor(valor):
@@ -126,6 +159,8 @@ def registar_gasto(id_orcamento, valor):
     orcamentos[id_orcamento]["gasto_atual"] += float(valor)
     restante = orcamentos[id_orcamento]["limite"] - orcamentos[id_orcamento]["gasto_atual"]
     categoria = orcamentos[id_orcamento]["categoria"]
+
+    guardar_orcamentos()
 
     if restante < 0:
         return 200, f"AVISO: Orçamento '{categoria}' excedido em {abs(round(restante, 2))}€!"
