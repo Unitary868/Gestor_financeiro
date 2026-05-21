@@ -57,18 +57,18 @@ def criar_conta(nome, nif, pin):
     carregar_contas()
 
     if len(nome.strip()) < 2:
-        log.warning("CREATE falhou | motivo=nome_curto | nome=%s", nome)
+        log.error("CREATE falhou | motivo=nome_curto | nome=%s", nome)
         return 400, "Nome deve ter pelo menos 2 caracteres."
     if not _validar_nif(nif):
-        log.warning("CREATE falhou | motivo=nif_invalido | nif=%s", nif)
+        log.error("CREATE falhou | motivo=nif_invalido | nif=%s", nif)
         return 400, "NIF inválido. Deve ter 9 dígitos."
     if not _validar_pin(pin):
-        log.warning("CREATE falhou | motivo=pin_invalido")
+        log.error("CREATE falhou | motivo=pin_invalido")
         return 400, "PIN inválido. Deve ter 4 dígitos."
 
     for conta in contas.values():
         if conta["nif"] == nif:
-            log.warning("CREATE falhou | motivo=nif_duplicado | nif=%s", nif)
+            log.error("CREATE falhou | motivo=nif_duplicado | nif=%s", nif)
             return 409, "Já existe uma conta com este NIF."
 
     id_conta = _gerar_id_unico()
@@ -94,7 +94,7 @@ def listar_contas():
     carregar_contas()
 
     if not contas:
-        log.warning("READ listar_contas | motivo=sem_registos")
+        log.error("READ listar_contas | motivo=sem_registos")
         return 404, "Não existem contas registadas."
 
     log.info("READ listar_contas ok | total=%d", len(contas))
@@ -108,7 +108,7 @@ def consultar_conta(id_conta):
     carregar_contas()
 
     if id_conta not in contas:
-        log.warning("READ consultar_conta | motivo=nao_encontrada | id=%s", id_conta)
+        log.error("READ consultar_conta | motivo=nao_encontrada | id=%s", id_conta)
         return 404, "Conta não encontrada."
 
     log.info("READ consultar_conta ok | id=%s", id_conta)
@@ -122,13 +122,13 @@ def atualizar_pin(id_conta, pin_atual, pin_novo):
     carregar_contas()
 
     if id_conta not in contas:
-        log.warning("UPDATE pin | motivo=nao_encontrada | id=%s", id_conta)
+        log.error("UPDATE pin | motivo=nao_encontrada | id=%s", id_conta)
         return 404, "Conta não encontrada."
     if contas[id_conta]["pin"] != pin_atual:
-        log.warning("UPDATE pin | motivo=pin_incorreto | id=%s", id_conta)
+        log.error("UPDATE pin | motivo=pin_incorreto | id=%s", id_conta)
         return 401, "PIN atual incorreto."
     if not _validar_pin(pin_novo):
-        log.warning("UPDATE pin | motivo=pin_novo_invalido | id=%s", id_conta)
+        log.error("UPDATE pin | motivo=pin_novo_invalido | id=%s", id_conta)
         return 400, "Novo PIN inválido. Deve ter 4 dígitos."
 
     contas[id_conta]["pin"] = pin_novo
@@ -144,10 +144,10 @@ def eliminar_conta(id_conta, pin):
     carregar_contas()
 
     if id_conta not in contas:
-        log.warning("DELETE conta | motivo=nao_encontrada | id=%s", id_conta)
+        log.error("DELETE conta | motivo=nao_encontrada | id=%s", id_conta)
         return 404, "Conta não encontrada."
     if contas[id_conta]["pin"] != pin:
-        log.warning("DELETE conta | motivo=pin_incorreto | id=%s", id_conta)
+        log.error("DELETE conta | motivo=pin_incorreto | id=%s", id_conta)
         return 401, "PIN incorreto."
 
     del contas[id_conta]
@@ -163,10 +163,10 @@ def verificar_login(id_conta, pin):
     carregar_contas()
 
     if id_conta not in contas:
-        log.warning("AUTH login | motivo=nao_encontrada | id=%s", id_conta)
+        log.error("AUTH login | motivo=nao_encontrada | id=%s", id_conta)
         return 404, "Conta não encontrada."
     if contas[id_conta]["pin"] != pin:
-        log.warning("AUTH login | motivo=pin_incorreto | id=%s", id_conta)
+        log.error("AUTH login | motivo=pin_incorreto | id=%s", id_conta)
         return 401, "PIN incorreto."
 
     log.info("AUTH login ok | id=%s", id_conta)
@@ -185,14 +185,14 @@ def get_nome(id_conta=None):
     carregar_contas()
     uid = _resolver_id(id_conta)
     if uid is None:
-        log.warning("get_nome | motivo=sem_contas")
+        log.error("get_nome | motivo=sem_contas")
         return 404, "Nenhuma conta encontrada."
     return 200, contas[uid]["nome"]
 
 def get_id(id_conta=None):
     uid = _resolver_id(id_conta)
     if uid is None:
-        log.warning("get_id | motivo=sem_contas")
+        log.error("get_id | motivo=sem_contas")
         return 404, "Nenhuma conta encontrada."
     return 200, uid
 
@@ -200,7 +200,7 @@ def get_dados(id_conta=None):
     carregar_contas()
     uid = _resolver_id(id_conta)
     if uid is None:
-        log.warning("get_dados | motivo=sem_contas")
+        log.error("get_dados | motivo=sem_contas")
         return 404, "Nenhuma conta encontrada."
     return 200, contas[uid]
 
