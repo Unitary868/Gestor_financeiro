@@ -65,18 +65,18 @@ def criar_orcamento(categoria, limite, periodo):
     carregar_orcamentos()
 
     if not _validar_categoria(categoria):
-        log.warning("CREATE falhou | motivo=categoria_invalida | categoria=%s", categoria)
+        log.error("CREATE falhou | motivo=categoria_invalida | categoria=%s", categoria)
         return 400, f"Categoria inválida. Opções: {', '.join(CATEGORIAS_ORC)}."
     if not _validar_valor(limite):
-        log.warning("CREATE falhou | motivo=limite_invalido | limite=%s", limite)
+        log.error("CREATE falhou | motivo=limite_invalido | limite=%s", limite)
         return 400, "Limite inválido. Deve ser um número positivo."
     if not _validar_periodo(periodo):
-        log.warning("CREATE falhou | motivo=periodo_invalido | periodo=%s", periodo)
+        log.error("CREATE falhou | motivo=periodo_invalido | periodo=%s", periodo)
         return 400, f"Período inválido. Opções: {', '.join(PERIODOS)}."
 
     for oid, o in orcamentos.items():
         if o["categoria"] == categoria and o["periodo"] == periodo:
-            log.warning("CREATE falhou | motivo=duplicado | categoria=%s | periodo=%s | id_existente=%s", categoria, periodo, oid)
+            log.error("CREATE falhou | motivo=duplicado | categoria=%s | periodo=%s | id_existente=%s", categoria, periodo, oid)
             return 409, f"Já existe um orçamento para '{categoria}' ({periodo}) com ID {oid}."
 
     id_orcamento = gerar_id_orcamento()
@@ -102,7 +102,7 @@ def listar_orcamentos():
     carregar_orcamentos()
 
     if not orcamentos:
-        log.warning("READ listar_orcamentos | motivo=sem_registos")
+        log.error("READ listar_orcamentos | motivo=sem_registos")
         return 404, "Não existem orçamentos registados."
 
     log.info("READ listar_orcamentos ok | total=%d", len(orcamentos))
@@ -116,7 +116,7 @@ def consultar_orcamento(id_orcamento):
     carregar_orcamentos()
 
     if id_orcamento not in orcamentos:
-        log.warning("READ consultar_orcamento | motivo=nao_encontrado | id=%s", id_orcamento)
+        log.error("READ consultar_orcamento | motivo=nao_encontrado | id=%s", id_orcamento)
         return 404, "Orçamento não encontrado."
 
     log.info("READ consultar_orcamento ok | id=%s", id_orcamento)
@@ -130,28 +130,28 @@ def atualizar_orcamento(id_orcamento, limite=None, categoria=None, periodo=None)
     carregar_orcamentos()
 
     if id_orcamento not in orcamentos:
-        log.warning("UPDATE orcamento | motivo=nao_encontrado | id=%s", id_orcamento)
+        log.error("UPDATE orcamento | motivo=nao_encontrado | id=%s", id_orcamento)
         return 404, "Orçamento não encontrado."
 
     if limite is not None:
         if not _validar_valor(limite):
-            log.warning("UPDATE orcamento | motivo=limite_invalido | id=%s | limite=%s", id_orcamento, limite)
+            log.error("UPDATE orcamento | motivo=limite_invalido | id=%s | limite=%s", id_orcamento, limite)
             return 400, "Limite inválido. Deve ser um número positivo."
         orcamentos[id_orcamento]["limite"] = float(limite)
 
     if categoria is not None:
         if not _validar_categoria(categoria):
-            log.warning("UPDATE orcamento | motivo=categoria_invalida | id=%s | categoria=%s", id_orcamento, categoria)
+            log.error("UPDATE orcamento | motivo=categoria_invalida | id=%s | categoria=%s", id_orcamento, categoria)
             return 400, f"Categoria inválida. Opções: {', '.join(CATEGORIAS_ORC)}."
         for oid, o in orcamentos.items():
             if o["categoria"] == categoria and o["periodo"] == orcamentos[id_orcamento]["periodo"] and oid != id_orcamento:
-                log.warning("UPDATE orcamento | motivo=duplicado | id=%s | categoria=%s", id_orcamento, categoria)
+                log.error("UPDATE orcamento | motivo=duplicado | id=%s | categoria=%s", id_orcamento, categoria)
                 return 409, "Já existe um orçamento para esta categoria e período."
         orcamentos[id_orcamento]["categoria"] = categoria
 
     if periodo is not None:
         if not _validar_periodo(periodo):
-            log.warning("UPDATE orcamento | motivo=periodo_invalido | id=%s | periodo=%s", id_orcamento, periodo)
+            log.error("UPDATE orcamento | motivo=periodo_invalido | id=%s | periodo=%s", id_orcamento, periodo)
             return 400, f"Período inválido. Opções: {', '.join(PERIODOS)}."
         orcamentos[id_orcamento]["periodo"] = periodo
 
@@ -167,7 +167,7 @@ def remover_orcamento(id_orcamento):
     carregar_orcamentos()
 
     if id_orcamento not in orcamentos:
-        log.warning("DELETE orcamento | motivo=nao_encontrado | id=%s", id_orcamento)
+        log.error("DELETE orcamento | motivo=nao_encontrado | id=%s", id_orcamento)
         return 404, "Orçamento não encontrado."
 
     del orcamentos[id_orcamento]
@@ -183,10 +183,10 @@ def registar_gasto(id_orcamento, valor):
     carregar_orcamentos()
 
     if id_orcamento not in orcamentos:
-        log.warning("GASTO registar | motivo=nao_encontrado | id=%s", id_orcamento)
+        log.error("GASTO registar | motivo=nao_encontrado | id=%s", id_orcamento)
         return 404, "Orçamento não encontrado."
     if not _validar_valor(valor):
-        log.warning("GASTO registar | motivo=valor_invalido | id=%s | valor=%s", id_orcamento, valor)
+        log.error("GASTO registar | motivo=valor_invalido | id=%s | valor=%s", id_orcamento, valor)
         return 400, "Valor inválido."
 
     orcamentos[id_orcamento]["gasto_atual"] += float(valor)
@@ -196,7 +196,7 @@ def registar_gasto(id_orcamento, valor):
     guardar_orcamentos()
 
     if restante < 0:
-        log.warning("GASTO registar | LIMITE EXCEDIDO | id=%s | categoria=%s | excesso=%.2f€", id_orcamento, categoria, abs(restante))
+        log.error("GASTO registar | LIMITE EXCEDIDO | id=%s | categoria=%s | excesso=%.2f€", id_orcamento, categoria, abs(restante))
         return 200, f"AVISO: Orçamento '{categoria}' excedido em {abs(round(restante, 2))}€!"
 
     log.info("GASTO registar ok | id=%s | categoria=%s | restante=%.2f€", id_orcamento, categoria, restante)
