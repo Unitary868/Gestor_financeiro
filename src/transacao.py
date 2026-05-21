@@ -59,19 +59,19 @@ def adicionar_transacao(tipo, descricao, valor, categoria, id_conta, id_orcament
     carregar_transacoes()
 
     if tipo not in ("receita", "despesa"):
-        log.warning("CREATE falhou | motivo=tipo_invalido | tipo=%s", tipo)
+        log.error("CREATE falhou | motivo=tipo_invalido | tipo=%s", tipo)
         return 400, "Tipo inválido. Use 'receita' ou 'despesa'."
     if len(descricao.strip()) < 2:
-        log.warning("CREATE falhou | motivo=descricao_curta | descricao=%s", descricao)
+        log.error("CREATE falhou | motivo=descricao_curta | descricao=%s", descricao)
         return 400, "Descrição deve ter pelo menos 2 caracteres."
     if not _validar_valor(valor):
-        log.warning("CREATE falhou | motivo=valor_invalido | valor=%s", valor)
+        log.error("CREATE falhou | motivo=valor_invalido | valor=%s", valor)
         return 400, "Valor deve ser um número positivo."
     if categoria not in CATEGORIAS:
-        log.warning("CREATE falhou | motivo=categoria_invalida | categoria=%s", categoria)
+        log.error("CREATE falhou | motivo=categoria_invalida | categoria=%s", categoria)
         return 400, f"Categoria inválida. Opções: {', '.join(CATEGORIAS)}."
     if not id_conta:
-        log.warning("CREATE falhou | motivo=id_conta_ausente")
+        log.error("CREATE falhou | motivo=id_conta_ausente")
         return 400, "id_conta é obrigatório."
 
     id_transacao = gerar_id_transacao()
@@ -99,7 +99,7 @@ def encontrar_transacao(id_transacao):
     carregar_transacoes()
 
     if id_transacao not in transacoes:
-        log.warning("READ encontrar_transacao | motivo=nao_encontrada | id=%s", id_transacao)
+        log.error("READ encontrar_transacao | motivo=nao_encontrada | id=%s", id_transacao)
         return 404, f"Transação {id_transacao} não encontrada."
 
     log.info("READ encontrar_transacao ok | id=%s", id_transacao)
@@ -113,7 +113,7 @@ def listar_transacoes(id_conta=None, filtro="todas", categoria=None):
     carregar_transacoes()
 
     if not transacoes:
-        log.warning("READ listar_transacoes | motivo=sem_registos")
+        log.error("READ listar_transacoes | motivo=sem_registos")
         return 404, "Não existem transações registadas."
 
     resultado = {}
@@ -129,7 +129,7 @@ def listar_transacoes(id_conta=None, filtro="todas", categoria=None):
         resultado[id_t] = t
 
     if not resultado:
-        log.warning("READ listar_transacoes | motivo=sem_resultados | filtro=%s | categoria=%s", filtro, categoria)
+        log.error("READ listar_transacoes | motivo=sem_resultados | filtro=%s | categoria=%s", filtro, categoria)
         return 404, "Nenhuma transação encontrada com esse filtro."
 
     log.info("READ listar_transacoes ok | total=%d | filtro=%s", len(resultado), filtro)
@@ -143,24 +143,24 @@ def editar_transacao(id_transacao, descricao=None, valor=None, categoria=None, i
     carregar_transacoes()
 
     if id_transacao not in transacoes:
-        log.warning("UPDATE transacao | motivo=nao_encontrada | id=%s", id_transacao)
+        log.error("UPDATE transacao | motivo=nao_encontrada | id=%s", id_transacao)
         return 404, f"Transação {id_transacao} não encontrada."
 
     if descricao is not None:
         if len(descricao.strip()) < 2:
-            log.warning("UPDATE transacao | motivo=descricao_curta | id=%s", id_transacao)
+            log.error("UPDATE transacao | motivo=descricao_curta | id=%s", id_transacao)
             return 400, "Descrição deve ter pelo menos 2 caracteres."
         transacoes[id_transacao]["descricao"] = descricao.strip()
 
     if valor is not None:
         if not _validar_valor(valor):
-            log.warning("UPDATE transacao | motivo=valor_invalido | id=%s | valor=%s", id_transacao, valor)
+            log.error("UPDATE transacao | motivo=valor_invalido | id=%s | valor=%s", id_transacao, valor)
             return 400, "Valor deve ser um número positivo."
         transacoes[id_transacao]["valor"] = float(valor)
 
     if categoria is not None:
         if categoria not in CATEGORIAS:
-            log.warning("UPDATE transacao | motivo=categoria_invalida | id=%s | categoria=%s", id_transacao, categoria)
+            log.error("UPDATE transacao | motivo=categoria_invalida | id=%s | categoria=%s", id_transacao, categoria)
             return 400, f"Categoria inválida. Opções: {', '.join(CATEGORIAS)}."
         transacoes[id_transacao]["categoria"] = categoria
 
@@ -179,7 +179,7 @@ def apagar_transacao(id_transacao):
     carregar_transacoes()
 
     if id_transacao not in transacoes:
-        log.warning("DELETE transacao | motivo=nao_encontrada | id=%s", id_transacao)
+        log.error("DELETE transacao | motivo=nao_encontrada | id=%s", id_transacao)
         return 404, f"Transação {id_transacao} não encontrada."
 
     del transacoes[id_transacao]
