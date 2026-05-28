@@ -1,6 +1,6 @@
 # app.py — Gestão Financeira | Tkinter
 # Fluxo: Login → App Principal (Tabs: Minha Conta | Transações | Orçamentos | Pagamentos)
-
+#teste
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from datetime import datetime
