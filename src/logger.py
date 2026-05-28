@@ -19,7 +19,3 @@ logging.basicConfig(
         logging.StreamHandler(),
     ],
 )
-
-def get_logger(name: str) -> logging.Logger:
-    """Devolve um logger com o nome do módulo indicado."""
-    return logging.getLogger(name)
