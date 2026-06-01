@@ -1,8 +1,8 @@
 # app.py — Gestão Financeira | Tkinter
-# Fluxo: Login → App Principal (Tabs: Minha Conta | Transações | Orçamentos | Pagamentos)
+# Estrutura funcional — sem classes, variáveis globais
 
 import tkinter as tk
-from tkinter import ttk, messagebox, simpledialog
+from tkinter import ttk, messagebox
 from datetime import datetime
 
 from logger import get_logger
@@ -44,7 +44,6 @@ CATEGORIAS_ORCAMENTO = (
 PERIODOS    = ("diário", "semanal", "mensal", "anual")
 METODOS_PAG = ("MB Way", "Transferência", "Multibanco", "Dinheiro", "Cartão")
 
-# Cores
 C_DARK    = "#1a1a2e"
 C_ACCENT  = "#e94560"
 C_BG      = "#f4f6f8"
@@ -63,50 +62,53 @@ BTN_CORES = {
     "limpar":    ("#636e72", "#7f8c8d"),
     "login":     ("#1a1a2e", "#2d3436"),
     "registar":  ("#6c5ce7", "#a29bfe"),
+    "voltar":    ("#b2bec3", "#636e72"),
 }
 
-F_NORMAL  = ("Helvetica", 10)
-F_BOLD    = ("Helvetica", 10, "bold")
-F_TITULO  = ("Helvetica", 12, "bold")
-F_GRANDE  = ("Helvetica", 16, "bold")
-F_BTN     = ("Helvetica", 9,  "bold")
-F_SMALL   = ("Helvetica", 9)
-F_TABELA  = ("Helvetica", 9)
+F_NORMAL = ("Helvetica", 10)
+F_BOLD   = ("Helvetica", 10, "bold")
+F_TITULO = ("Helvetica", 12, "bold")
+F_GRANDE = ("Helvetica", 16, "bold")
+F_BTN    = ("Helvetica", 9,  "bold")
+F_SMALL  = ("Helvetica", 9)
+F_TABELA = ("Helvetica", 9)
+
+# conta autenticada (preenchida após login)
+conta_atual = {}
 
 
 # ══════════════════════════════════════════════════════════════
 # ESTILOS
 # ══════════════════════════════════════════════════════════════
 
-def _aplicar_estilos(root):
-    s = ttk.Style(root)
+def aplicar_estilos():
+    s = ttk.Style(janela)
     s.theme_use("clam")
-    s.configure("TNotebook",            background=C_BG, borderwidth=0)
-    s.configure("TNotebook.Tab",        font=F_BOLD, padding=[16, 8],
-                                         background="#dfe6e9", foreground=C_MUTED)
+    s.configure("TNotebook",          background=C_BG, borderwidth=0)
+    s.configure("TNotebook.Tab",      font=F_BOLD, padding=[16, 8],
+                                       background="#dfe6e9", foreground=C_MUTED)
     s.map("TNotebook.Tab",
           background=[("selected", C_FRAME)],
           foreground=[("selected", C_ACCENT)])
-    s.configure("TFrame",               background=C_BG)
-    s.configure("Tabela.Treeview",      font=F_TABELA, rowheight=26,
-                                         background=C_FRAME, fieldbackground=C_FRAME,
-                                         foreground=C_TEXTO)
+    s.configure("TFrame",             background=C_BG)
+    s.configure("Tabela.Treeview",    font=F_TABELA, rowheight=26,
+                                       background=C_FRAME, fieldbackground=C_FRAME,
+                                       foreground=C_TEXTO)
     s.configure("Tabela.Treeview.Heading",
-                                         font=("Helvetica", 9, "bold"),
-                                         background="#dfe6e9", foreground=C_TEXTO,
-                                         relief="flat")
-    s.map("Tabela.Treeview",            background=[("selected", "#2980b9")],
-                                         foreground=[("selected", "white")])
-    s.configure("TScrollbar",           background="#dfe6e9", troughcolor=C_BG,
-                                         borderwidth=0, arrowsize=12)
-    s.configure("TCombobox",            padding=4)
+                                       font=("Helvetica", 9, "bold"),
+                                       background="#dfe6e9", foreground=C_TEXTO, relief="flat")
+    s.map("Tabela.Treeview",          background=[("selected", "#2980b9")],
+                                       foreground=[("selected", "white")])
+    s.configure("TScrollbar",         background="#dfe6e9", troughcolor=C_BG,
+                                       borderwidth=0, arrowsize=12)
+    s.configure("TCombobox",          padding=4)
 
 
 # ══════════════════════════════════════════════════════════════
 # WIDGETS AUXILIARES
 # ══════════════════════════════════════════════════════════════
 
-def _btn(parent, texto, cmd, tipo, width=12):
+def btn(parent, texto, cmd, tipo, width=12):
     bg, active = BTN_CORES[tipo]
     b = tk.Button(parent, text=texto, command=cmd, width=width,
                   bg=bg, fg="white", activebackground=active, activeforeground="white",
@@ -115,8 +117,9 @@ def _btn(parent, texto, cmd, tipo, width=12):
     b.bind("<Leave>", lambda e: b.config(bg=bg))
     return b
 
-def _label_entry(frame, texto, row, col=0, show=None, readonly=False, width=24, bg=C_FRAME):
-    tk.Label(frame, text=texto, font=F_NORMAL, bg=bg, fg=C_TEXTO, anchor="e"
+
+def campo(frame, texto, row, col=0, show=None, readonly=False, width=24):
+    tk.Label(frame, text=texto, font=F_NORMAL, bg=C_FRAME, fg=C_TEXTO, anchor="e"
              ).grid(row=row, column=col * 2, sticky="e", padx=(12, 6), pady=5)
     e = tk.Entry(frame, width=width, show=show or "",
                  state="readonly" if readonly else "normal",
@@ -124,36 +127,42 @@ def _label_entry(frame, texto, row, col=0, show=None, readonly=False, width=24, 
     e.grid(row=row, column=col * 2 + 1, sticky="w", padx=(0, 16), pady=5)
     return e
 
-def _label_combo(frame, texto, row, values, col=0, width=22, bg=C_FRAME):
-    tk.Label(frame, text=texto, font=F_NORMAL, bg=bg, fg=C_TEXTO, anchor="e"
+
+def combo(frame, texto, row, values, col=0, width=22):
+    tk.Label(frame, text=texto, font=F_NORMAL, bg=C_FRAME, fg=C_TEXTO, anchor="e"
              ).grid(row=row, column=col * 2, sticky="e", padx=(12, 6), pady=5)
     c = ttk.Combobox(frame, values=values, width=width, state="readonly", font=F_NORMAL)
     c.grid(row=row, column=col * 2 + 1, sticky="w", padx=(0, 16), pady=5)
     return c
 
-def _treeview(frame, colunas, larguras=None):
+
+def treeview(frame, colunas, larguras=None):
     tree = ttk.Treeview(frame, columns=colunas, show="headings",
-                         height=12, style="Tabela.Treeview", selectmode="browse")
+                        height=12, style="Tabela.Treeview", selectmode="browse")
     for i, col in enumerate(colunas):
-        w = larguras[i] if larguras else 150
         tree.heading(col, text=col)
-        tree.column(col, width=w, anchor="center")
-    tree.tag_configure("par",   background="#f8f9fa")
-    tree.tag_configure("impar", background=C_FRAME)
+        tree.column(col, width=larguras[i] if larguras else 150, anchor="center")
+    tree.tag_configure("par",      background="#f8f9fa")
+    tree.tag_configure("impar",    background=C_FRAME)
+    tree.tag_configure("excedido", background="#ffe0e0", foreground="#c0392b")
     sb = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
     tree.configure(yscrollcommand=sb.set)
     tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
     sb.pack(side=tk.RIGHT, fill=tk.Y)
     return tree
 
-def _inserir_linha(tree, valores):
-    tag = "par" if len(tree.get_children()) % 2 == 0 else "impar"
+
+def linha(tree, valores, tag_extra=None):
+    n   = len(tree.get_children())
+    tag = tag_extra or ("par" if n % 2 == 0 else "impar")
     tree.insert("", tk.END, values=valores, tags=(tag,))
 
-def _limpar_tree(tree):
+
+def limpar_tree(tree):
     tree.delete(*tree.get_children())
 
-def _set(entry, valor, readonly=False):
+
+def set_entry(entry, valor, readonly=False):
     if readonly:
         entry.config(state="normal")
     entry.delete(0, tk.END)
@@ -161,773 +170,955 @@ def _set(entry, valor, readonly=False):
     if readonly:
         entry.config(state="readonly")
 
-def _clear(*widgets):
+
+def limpar_widgets(*widgets):
     for w in widgets:
         if isinstance(w, ttk.Combobox):
             w.set("")
         elif w.cget("state") == "readonly":
-            w.config(state="normal"); w.delete(0, tk.END); w.config(state="readonly")
+            w.config(state="normal")
+            w.delete(0, tk.END)
+            w.config(state="readonly")
         else:
             w.delete(0, tk.END)
 
-def _separador(parent):
-    ttk.Separator(parent, orient="horizontal").pack(fill=tk.X, padx=16, pady=2)
+
+def erro_inline(label, msg, after_ms=4000):
+    label.config(text=msg, fg=C_ERROR)
+    if after_ms:
+        label.after(after_ms, lambda: label.config(text=""))
+
+
+def msg_inline(label, txt, cor, after_ms=5000):
+    label.config(text=txt, fg=cor)
+    label.after(after_ms, lambda: label.config(text=""))
+
+
+def lf(parent, titulo, fill=tk.X, expand=False, pady=(10, 4)):
+    f = tk.LabelFrame(parent, text=f"  {titulo}  ", font=F_TITULO,
+                      bg=C_FRAME, fg=C_TEXTO, relief="solid", bd=1)
+    f.pack(fill=fill, expand=expand, padx=16, pady=pady)
+    return f
+
+
+def set_status(msg, tipo="ok"):
+    cores = {"ok": C_SUCCESS, "erro": C_ERROR, "aviso": C_WARN}
+    st_icon.config(fg=cores.get(tipo, C_SUCCESS))
+    st_var.set(f"  {msg}")
 
 
 # ══════════════════════════════════════════════════════════════
-# CLASSE BASE — Tab
+# NAVEGAÇÃO ENTRE FRAMES
 # ══════════════════════════════════════════════════════════════
 
-class Tab:
-    def __init__(self, notebook, titulo, conta, set_status):
-        self.conta      = conta          # dict da conta autenticada
-        self.set_status = set_status
-        self.frame      = ttk.Frame(notebook)
-        notebook.add(self.frame, text=f"  {titulo}  ")
-        self._construir()
+frame_atual = None
 
-    def _construir(self):  raise NotImplementedError
-    def _limpar(self):     raise NotImplementedError
-    def _carregar(self):   raise NotImplementedError
 
-    # ── Helpers de layout ─────────────────────────────────────
-    def _lf(self, titulo):
-        lf = tk.LabelFrame(self.frame, text=f"  {titulo}  ",
-                           font=F_TITULO, bg=C_FRAME, fg=C_TEXTO,
-                           relief="solid", bd=1, labelanchor="nw")
-        lf.pack(fill=tk.X, padx=16, pady=(14, 4))
-        return lf
+def mostrar_frame(novo_frame):
+    global frame_atual
+    if frame_atual:
+        frame_atual.pack_forget()
+    novo_frame.pack(fill=tk.BOTH, expand=True)
+    frame_atual = novo_frame
 
-    def _frame_btn(self):
-        f = tk.Frame(self.frame, bg=C_BG)
-        f.pack(pady=8)
-        return f
 
-    def _frame_tab(self):
-        outer = tk.LabelFrame(self.frame, text="  Registos  ",
-                              font=F_TITULO, bg=C_FRAME, fg=C_TEXTO,
-                              relief="solid", bd=1, labelanchor="nw")
-        outer.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 14))
-        inner = tk.Frame(outer, bg=C_FRAME)
-        inner.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
-        return inner
+# ══════════════════════════════════════════════════════════════
+# LOGIN — construção
+# ══════════════════════════════════════════════════════════════
 
-    # ── Helpers de feedback ───────────────────────────────────
-    def ok(self, msg):
-        log.info(msg)
-        self.set_status(msg, "ok")
+def construir_login():
+    global frame_login, card_login
+    global e_login_id, e_login_pin, lbl_err_login
+    global e_reg_nome, e_reg_nif, e_reg_pin, lbl_err_reg
+    global v_login, v_reg
 
-    def erro(self, msg):
-        log.error(msg)
-        self.set_status(str(msg), "erro")
-        messagebox.showerror("Erro", str(msg))
+    frame_login = tk.Frame(janela, bg=C_DARK)
 
-    def aviso(self, msg):
-        log.warning(msg)
-        self.set_status(str(msg), "aviso")
-        messagebox.showwarning("Aviso", str(msg))
+    card_login = tk.Frame(frame_login, bg=C_FRAME)
+    card_login.place(relx=.5, rely=.5, anchor="center", width=400, height=500)
+    tk.Frame(card_login, bg=C_ACCENT, height=6).pack(fill=tk.X)
 
-    def confirmar(self, msg):
-        return messagebox.askyesno("Confirmação", msg)
+    # ── vista login ───────────────────────────────────────────
+    v_login = tk.Frame(card_login, bg=C_FRAME)
 
-    def pedir(self, titulo, prompt, show=None):
-        return simpledialog.askstring(titulo, prompt, show=show, parent=self.frame)
+    tk.Label(v_login, text="💰", font=("Helvetica", 36), bg=C_FRAME).pack(pady=(24, 4))
+    tk.Label(v_login, text="Gestão Financeira", font=F_GRANDE, bg=C_FRAME, fg=C_DARK).pack()
+    tk.Label(v_login, text="Inicie sessão para continuar", font=F_SMALL,
+             bg=C_FRAME, fg=C_MUTED).pack(pady=(3, 18))
+    ttk.Separator(v_login).pack(fill=tk.X, padx=28, pady=(0, 12))
+
+    frm_l = tk.Frame(v_login, bg=C_FRAME)
+    frm_l.pack(padx=30, fill=tk.X)
+
+    tk.Label(frm_l, text="ID da Conta", font=F_BOLD, bg=C_FRAME, anchor="w").pack(fill=tk.X)
+    e_login_id = tk.Entry(frm_l, font=F_NORMAL, relief="solid", bd=1)
+    e_login_id.pack(fill=tk.X, ipady=6, pady=(3, 12))
+
+    tk.Label(frm_l, text="PIN", font=F_BOLD, bg=C_FRAME, anchor="w").pack(fill=tk.X)
+    e_login_pin = tk.Entry(frm_l, font=F_NORMAL, relief="solid", bd=1, show="*")
+    e_login_pin.pack(fill=tk.X, ipady=6, pady=(3, 4))
+    e_login_pin.bind("<Return>", lambda _: fazer_login())
+
+    lbl_err_login = tk.Label(frm_l, text="", font=F_SMALL, bg=C_FRAME, fg=C_ERROR)
+    lbl_err_login.pack(fill=tk.X, pady=(0, 6))
+
+    frm_lb = tk.Frame(v_login, bg=C_FRAME)
+    frm_lb.pack(padx=30, fill=tk.X)
+    btn(frm_lb, "Entrar",      fazer_login,          "login",    width=16).pack(fill=tk.X, ipady=3, pady=(2, 6))
+    btn(frm_lb, "Criar Conta", mostrar_registo,      "registar", width=16).pack(fill=tk.X, ipady=3)
+
+    # ── vista registo ─────────────────────────────────────────
+    v_reg = tk.Frame(card_login, bg=C_FRAME)
+
+    tk.Label(v_reg, text="Nova Conta", font=F_TITULO, bg=C_FRAME, fg=C_DARK).pack(pady=(24, 4))
+    tk.Label(v_reg, text="Preencha os dados abaixo", font=F_SMALL,
+             bg=C_FRAME, fg=C_MUTED).pack(pady=(0, 14))
+    ttk.Separator(v_reg).pack(fill=tk.X, padx=28, pady=(0, 10))
+
+    frm_r = tk.Frame(v_reg, bg=C_FRAME)
+    frm_r.pack(padx=30, fill=tk.X)
+
+    tk.Label(frm_r, text="Nome completo",  font=F_BOLD, bg=C_FRAME, anchor="w").pack(fill=tk.X)
+    e_reg_nome = tk.Entry(frm_r, font=F_NORMAL, relief="solid", bd=1)
+    e_reg_nome.pack(fill=tk.X, ipady=5, pady=(3, 10))
+
+    tk.Label(frm_r, text="NIF (9 dígitos)", font=F_BOLD, bg=C_FRAME, anchor="w").pack(fill=tk.X)
+    e_reg_nif = tk.Entry(frm_r, font=F_NORMAL, relief="solid", bd=1)
+    e_reg_nif.pack(fill=tk.X, ipady=5, pady=(3, 10))
+
+    tk.Label(frm_r, text="PIN (4 dígitos)", font=F_BOLD, bg=C_FRAME, anchor="w").pack(fill=tk.X)
+    e_reg_pin = tk.Entry(frm_r, font=F_NORMAL, relief="solid", bd=1, show="*")
+    e_reg_pin.pack(fill=tk.X, ipady=5, pady=(3, 4))
+    e_reg_pin.bind("<Return>", lambda _: registar_conta())
+
+    lbl_err_reg = tk.Label(frm_r, text="", font=F_SMALL, bg=C_FRAME, fg=C_ERROR)
+    lbl_err_reg.pack(fill=tk.X, pady=(0, 6))
+
+    frm_rb = tk.Frame(v_reg, bg=C_FRAME)
+    frm_rb.pack(padx=30, fill=tk.X)
+    btn(frm_rb, "Criar Conta", registar_conta,  "criar",  width=16).pack(fill=tk.X, ipady=3, pady=(2, 6))
+    btn(frm_rb, "← Voltar",   mostrar_login_v, "voltar", width=16).pack(fill=tk.X, ipady=3)
+
+    mostrar_login_v()
+
+
+def mostrar_login_v():
+    v_reg.pack_forget()
+    v_login.pack(fill=tk.BOTH, expand=True)
+    e_login_id.focus()
+
+
+def mostrar_registo():
+    v_login.pack_forget()
+    v_reg.pack(fill=tk.BOTH, expand=True)
+    e_reg_nome.focus()
+
+
+# ── ações login ───────────────────────────────────────────────
+
+def fazer_login():
+    uid = e_login_id.get().strip()
+    pin = e_login_pin.get().strip()
+    if not uid or not pin:
+        return erro_inline(lbl_err_login, "Preencha o ID e o PIN.")
+    log.info("AUTH login | id=%s", uid)
+    code, obj = verificar_login(uid, pin)
+    if code == 200:
+        log.info("AUTH ok | id=%s | nome=%s", uid, obj["nome"])
+        conta_atual.update(obj)
+        abrir_app()
+    else:
+        log.error("AUTH falhou | id=%s | %s", uid, obj)
+        erro_inline(lbl_err_login, str(obj))
+
+
+def registar_conta():
+    nome = e_reg_nome.get().strip()
+    if not nome:
+        return erro_inline(lbl_err_reg, "400: Nome obrigatório.")
+    code, obj = criar_conta(nome, e_reg_nif.get().strip(), e_reg_pin.get().strip())
+    if code == 201:
+        log.info("AUTH conta criada | id=%s", obj["id"])
+        limpar_widgets(e_reg_nome, e_reg_nif, e_reg_pin)
+        lbl_err_reg.config(text="")
+        mostrar_login_v()
+        e_login_id.delete(0, tk.END)
+        e_login_id.insert(0, obj["id"])
+        lbl_err_login.config(text=f"✓ Conta criada! ID: {obj['id']} — faça login.", fg=C_SUCCESS)
+        lbl_err_login.after(8000, lambda: lbl_err_login.config(text=""))
+    else:
+        log.error("AUTH criar conta | %s", obj)
+        erro_inline(lbl_err_reg, str(obj))
+
+
+# ══════════════════════════════════════════════════════════════
+# MAIN APP — construção
+# ══════════════════════════════════════════════════════════════
+
+def construir_app():
+    global frame_app, lbl_hora, st_icon, st_var
+    global notebook
+
+    frame_app = tk.Frame(janela, bg=C_BG)
+
+    # ── header ────────────────────────────────────────────────
+    hdr = tk.Frame(frame_app, bg=C_DARK, height=56)
+    hdr.pack(fill=tk.X)
+    hdr.pack_propagate(False)
+
+    tk.Label(hdr, text="💰  Gestão Financeira",
+             bg=C_DARK, fg="white", font=("Helvetica", 14, "bold")
+             ).pack(side=tk.LEFT, padx=20, pady=14)
+
+    tk.Button(hdr, text="⎋  Sair", command=fazer_logout,
+              bg=C_ACCENT, fg="white", relief="flat",
+              font=F_BTN, cursor="hand2", padx=12, pady=6
+              ).pack(side=tk.RIGHT, padx=16, pady=10)
+
+    lbl_usuario = tk.Label(hdr, text="", bg=C_DARK, fg="#a0aec0", font=F_SMALL)
+    lbl_usuario.pack(side=tk.RIGHT, padx=4)
+
+    lbl_hora = tk.Label(hdr, text="", bg=C_DARK, fg="#636e72", font=F_SMALL)
+    lbl_hora.pack(side=tk.RIGHT, padx=16)
+
+    # guarda referência para atualizar o nome após login
+    frame_app._lbl_usuario = lbl_usuario
+
+    # ── notebook ──────────────────────────────────────────────
+    notebook = ttk.Notebook(frame_app)
+    notebook.pack(fill=tk.BOTH, expand=True)
+
+    construir_tab_conta()
+    construir_tab_transacoes()
+    construir_tab_orcamentos()
+    construir_tab_pagamentos()
+
+    # ── status bar ────────────────────────────────────────────
+    bar = tk.Frame(frame_app, bg="#2d3436", height=30)
+    bar.pack(fill=tk.X, side=tk.BOTTOM)
+    bar.pack_propagate(False)
+
+    st_icon = tk.Label(bar, text="●", bg="#2d3436", fg=C_SUCCESS, font=("Helvetica", 11))
+    st_icon.pack(side=tk.LEFT, padx=(12, 4), pady=5)
+
+    st_var = tk.StringVar(value="Pronto.")
+    tk.Label(bar, textvariable=st_var, bg="#2d3436",
+             fg="#dfe6e9", font=F_SMALL, anchor="w").pack(side=tk.LEFT)
+
+    tk.Label(bar, text="Gestão Financeira  v1.0",
+             bg="#2d3436", fg="#636e72", font=("Helvetica", 8)).pack(side=tk.RIGHT, padx=12)
+
+
+def tick():
+    lbl_hora.config(text=datetime.now().strftime("%d/%m/%Y  %H:%M:%S"))
+    janela.after(1000, tick)
+
+
+def fazer_logout():
+    if messagebox.askyesno("Logout", "Tem a certeza que pretende sair?"):
+        log.info("AUTH logout | id=%s", conta_atual.get("id"))
+        conta_atual.clear()
+        mostrar_frame(frame_login)
+        mostrar_login_v()
+        e_login_id.delete(0, tk.END)
+        e_login_pin.delete(0, tk.END)
+
+
+def abrir_app():
+    frame_app._lbl_usuario.config(text=f"👤  {conta_atual['nome']}")
+    # recarregar dados nas tabs
+    carregar_tabela_transacoes()
+    carregar_tabela_orcamentos()
+    carregar_tabela_pagamentos()
+    atualizar_saldo()
+    # atualizar campo id_conta nas transações
+    set_entry(e_trans_id_conta, conta_atual["id"], readonly=True)
+    # atualizar info da conta
+    lbl_conta_id.config(text=conta_atual["id"])
+    lbl_conta_nome.config(text=conta_atual["nome"])
+    lbl_conta_nif.config(text=conta_atual["nif"])
+    mostrar_frame(frame_app)
+    tick()
 
 
 # ══════════════════════════════════════════════════════════════
 # TAB — MINHA CONTA
 # ══════════════════════════════════════════════════════════════
 
-class TabMinhaConta(Tab):
-    def _construir(self):
-        # ── Info ──────────────────────────────────────────────
-        frm_info = self._lf("Informações da Conta")
-        frm_info.configure(bg=C_FRAME)
+def construir_tab_conta():
+    global lbl_conta_id, lbl_conta_nome, lbl_conta_nif
+    global lbl_saldo, lbl_receitas, lbl_despesas
+    global e_pin_atual, e_pin_novo, lbl_pin_msg
+    global e_pin_elim, lbl_del_msg
 
-        dados = [
-            ("ID",   self.conta["id"]),
-            ("Nome", self.conta["nome"]),
-            ("NIF",  self.conta["nif"]),
-        ]
-        for i, (label, valor) in enumerate(dados):
-            tk.Label(frm_info, text=f"{label}:", font=F_BOLD,
-                     bg=C_FRAME, fg=C_MUTED).grid(row=i, column=0, sticky="e", padx=(20,8), pady=6)
-            tk.Label(frm_info, text=valor, font=F_NORMAL,
-                     bg=C_FRAME, fg=C_TEXTO).grid(row=i, column=1, sticky="w", padx=(0,20))
+    tab = tk.Frame(notebook, bg=C_BG)
+    notebook.add(tab, text="  Minha Conta  ")
 
-        # ── Saldo ─────────────────────────────────────────────
-        _, saldo = calcular_saldo(self.conta["id"])
-        _, rec, desp = totais(self.conta["id"])
-        cor_saldo = C_SUCCESS if saldo >= 0 else C_ERROR
+    # ── Informações ───────────────────────────────────────────
+    frm_info = lf(tab, "Informações da Conta")
+    for i, (rotulo, var_name) in enumerate([("ID", "id"), ("Nome", "nome"), ("NIF", "nif")]):
+        tk.Label(frm_info, text=f"{rotulo}:", font=F_BOLD, bg=C_FRAME, fg=C_MUTED
+                 ).grid(row=i, column=0, sticky="e", padx=(20, 8), pady=5)
 
-        frm_saldo = self._lf("Resumo Financeiro")
-        frm_saldo.configure(bg=C_FRAME)
+    lbl_conta_id   = tk.Label(frm_info, text="", font=F_NORMAL, bg=C_FRAME, fg=C_TEXTO)
+    lbl_conta_nome = tk.Label(frm_info, text="", font=F_NORMAL, bg=C_FRAME, fg=C_TEXTO)
+    lbl_conta_nif  = tk.Label(frm_info, text="", font=F_NORMAL, bg=C_FRAME, fg=C_TEXTO)
+    lbl_conta_id.grid(  row=0, column=1, sticky="w")
+    lbl_conta_nome.grid(row=1, column=1, sticky="w")
+    lbl_conta_nif.grid( row=2, column=1, sticky="w")
 
-        self.lbl_saldo    = tk.Label(frm_saldo, text=f"{saldo:.2f}€",   font=("Helvetica", 22, "bold"), bg=C_FRAME, fg=cor_saldo)
-        self.lbl_receitas = tk.Label(frm_saldo, text=f"▲ {rec:.2f}€",  font=F_BOLD, bg=C_FRAME, fg=C_SUCCESS)
-        self.lbl_despesas = tk.Label(frm_saldo, text=f"▼ {desp:.2f}€", font=F_BOLD, bg=C_FRAME, fg=C_ERROR)
+    # ── Resumo financeiro ─────────────────────────────────────
+    frm_s = lf(tab, "Resumo Financeiro")
 
-        tk.Label(frm_saldo, text="Saldo atual:", font=F_BOLD, bg=C_FRAME, fg=C_MUTED
-                 ).grid(row=0, column=0, sticky="e", padx=(20, 8), pady=8)
-        self.lbl_saldo.grid(row=0, column=1, sticky="w")
+    lbl_saldo    = tk.Label(frm_s, text="0.00€", font=("Helvetica", 22, "bold"), bg=C_FRAME, fg=C_SUCCESS)
+    lbl_receitas = tk.Label(frm_s, text="▲ 0.00€", font=F_BOLD, bg=C_FRAME, fg=C_SUCCESS)
+    lbl_despesas = tk.Label(frm_s, text="▼ 0.00€", font=F_BOLD, bg=C_FRAME, fg=C_ERROR)
 
-        tk.Label(frm_saldo, text="Receitas:", font=F_BOLD, bg=C_FRAME, fg=C_MUTED
-                 ).grid(row=1, column=0, sticky="e", padx=(20, 8), pady=4)
-        self.lbl_receitas.grid(row=1, column=1, sticky="w")
+    for i, (rotulo, widget) in enumerate([("Saldo atual:", lbl_saldo),
+                                           ("Receitas:",   lbl_receitas),
+                                           ("Despesas:",   lbl_despesas)]):
+        tk.Label(frm_s, text=rotulo, font=F_BOLD, bg=C_FRAME, fg=C_MUTED
+                 ).grid(row=i, column=0, sticky="e", padx=(20, 8), pady=4)
+        widget.grid(row=i, column=1, sticky="w")
 
-        tk.Label(frm_saldo, text="Despesas:", font=F_BOLD, bg=C_FRAME, fg=C_MUTED
-                 ).grid(row=2, column=0, sticky="e", padx=(20, 8), pady=4)
-        self.lbl_despesas.grid(row=2, column=1, sticky="w")
+    tk.Button(frm_s, text="↻  Atualizar Saldo", font=F_BTN, command=atualizar_saldo,
+              bg="#dfe6e9", fg=C_TEXTO, relief="flat", cursor="hand2", padx=8
+              ).grid(row=3, column=0, columnspan=2, pady=(8, 6))
 
-        tk.Button(frm_saldo, text="↻  Atualizar", font=F_BTN, command=self._atualizar_saldo,
-                  bg="#dfe6e9", fg=C_TEXTO, relief="flat", cursor="hand2", padx=8
-                  ).grid(row=3, column=0, columnspan=2, pady=(10, 6))
+    # ── Alterar PIN ───────────────────────────────────────────
+    frm_pin = lf(tab, "Alterar PIN")
+    fi = tk.Frame(frm_pin, bg=C_FRAME)
+    fi.pack(padx=12, pady=8, fill=tk.X)
 
-        # ── Ações ─────────────────────────────────────────────
-        frm_acoes = self._lf("Ações")
-        frm_acoes.configure(bg=C_FRAME)
+    tk.Label(fi, text="PIN atual:",  font=F_NORMAL, bg=C_FRAME, fg=C_TEXTO
+             ).grid(row=0, column=0, sticky="e", padx=(0, 6), pady=4)
+    e_pin_atual = tk.Entry(fi, width=14, show="*", relief="solid", bd=1, font=F_NORMAL)
+    e_pin_atual.grid(row=0, column=1, sticky="w", padx=(0, 20))
 
-        f = tk.Frame(frm_acoes, bg=C_FRAME)
-        f.pack(padx=10, pady=10)
-        _btn(f, "Alterar PIN",      self._alterar_pin,   "atualizar", width=16).pack(side=tk.LEFT, padx=6)
-        _btn(f, "Eliminar Conta",   self._eliminar,      "remover",   width=16).pack(side=tk.LEFT, padx=6)
+    tk.Label(fi, text="Novo PIN:", font=F_NORMAL, bg=C_FRAME, fg=C_TEXTO
+             ).grid(row=0, column=2, sticky="e", padx=(0, 6))
+    e_pin_novo = tk.Entry(fi, width=14, show="*", relief="solid", bd=1, font=F_NORMAL)
+    e_pin_novo.grid(row=0, column=3, sticky="w", padx=(0, 12))
 
-    def _atualizar_saldo(self):
-        _, saldo    = calcular_saldo(self.conta["id"])
-        _, rec, desp = totais(self.conta["id"])
-        cor = C_SUCCESS if saldo >= 0 else C_ERROR
-        self.lbl_saldo.config(text=f"{saldo:.2f}€", fg=cor)
-        self.lbl_receitas.config(text=f"▲ {rec:.2f}€")
-        self.lbl_despesas.config(text=f"▼ {desp:.2f}€")
-        self.ok("Saldo atualizado.")
+    lbl_pin_msg = tk.Label(fi, text="", font=F_SMALL, bg=C_FRAME)
+    lbl_pin_msg.grid(row=1, column=0, columnspan=4, sticky="w", pady=(2, 0))
 
-    def _alterar_pin(self):
-        p_atual = self.pedir("Alterar PIN", "PIN atual:", show="*")
-        if p_atual is None: return
-        p_novo  = self.pedir("Alterar PIN", "Novo PIN (4 dígitos):", show="*")
-        if p_novo is None: return
-        code, obj = atualizar_pin(self.conta["id"], p_atual, p_novo)
-        if code == 200:
-            self.conta["pin"] = p_novo
-            self.ok("PIN atualizado com sucesso.")
-        else:
-            self.erro(obj)
+    btn(fi, "Guardar PIN", alterar_pin, "atualizar", width=14).grid(row=0, column=4, padx=(8, 0))
 
-    def _eliminar(self):
-        pin = self.pedir("Eliminar Conta", "Insira o seu PIN para confirmar:", show="*")
-        if pin is None: return
-        if not self.confirmar("Esta ação é irreversível.\nTem a certeza que pretende eliminar a sua conta?"):
-            return
-        code, obj = eliminar_conta(self.conta["id"], pin)
-        if code == 200:
-            self.ok(f"Conta eliminada → {self.conta['id']}")
-            messagebox.showinfo("Conta eliminada", "A sua conta foi eliminada. A aplicação vai fechar.")
-            self.frame.winfo_toplevel().destroy()
-        else:
-            self.erro(obj)
+    # ── Zona de Perigo ────────────────────────────────────────
+    frm_del = lf(tab, "Zona de Perigo")
+    fd = tk.Frame(frm_del, bg=C_FRAME)
+    fd.pack(padx=12, pady=8, fill=tk.X)
 
-    def _limpar(self): pass
-    def _carregar(self): pass
+    tk.Label(fd, text="PIN de confirmação:", font=F_NORMAL, bg=C_FRAME, fg=C_TEXTO
+             ).grid(row=0, column=0, sticky="e", padx=(0, 6), pady=4)
+    e_pin_elim = tk.Entry(fd, width=14, show="*", relief="solid", bd=1, font=F_NORMAL)
+    e_pin_elim.grid(row=0, column=1, sticky="w", padx=(0, 12))
+
+    lbl_del_msg = tk.Label(fd, text="", font=F_SMALL, bg=C_FRAME)
+    lbl_del_msg.grid(row=1, column=0, columnspan=3, sticky="w", pady=(2, 0))
+
+    btn(fd, "Eliminar Conta", eliminar_conta_ui, "remover", width=14).grid(row=0, column=2, padx=(8, 0))
+
+
+def atualizar_saldo():
+    if not conta_atual:
+        return
+    _, saldo     = calcular_saldo(conta_atual["id"])
+    _, rec, desp = totais(conta_atual["id"])
+    cor = C_SUCCESS if saldo >= 0 else C_ERROR
+    lbl_saldo.config(text=f"{saldo:.2f}€", fg=cor)
+    lbl_receitas.config(text=f"▲ {rec:.2f}€")
+    lbl_despesas.config(text=f"▼ {desp:.2f}€")
+    set_status("Saldo atualizado.")
+    log.info("Saldo atualizado")
+
+
+def alterar_pin():
+    p_atual = e_pin_atual.get().strip()
+    p_novo  = e_pin_novo.get().strip()
+    if not p_atual or not p_novo:
+        lbl_pin_msg.config(text="Preencha os dois campos.", fg=C_WARN)
+        return
+    code, obj = atualizar_pin(conta_atual["id"], p_atual, p_novo)
+    if code == 200:
+        conta_atual["pin"] = p_novo
+        limpar_widgets(e_pin_atual, e_pin_novo)
+        lbl_pin_msg.config(text="✓ PIN atualizado.", fg=C_SUCCESS)
+        set_status("PIN atualizado com sucesso.")
+        log.info("PIN atualizado")
+    else:
+        lbl_pin_msg.config(text=str(obj), fg=C_ERROR)
+        log.error("PIN falhou | %s", obj)
+
+
+def eliminar_conta_ui():
+    pin = e_pin_elim.get().strip()
+    if not pin:
+        lbl_del_msg.config(text="Insira o PIN de confirmação.", fg=C_WARN)
+        return
+    if not messagebox.askyesno("Confirmação", "Esta ação é irreversível.\nTem a certeza que pretende eliminar a sua conta?"):
+        return
+    code, obj = eliminar_conta(conta_atual["id"], pin)
+    if code == 200:
+        set_status(f"Conta eliminada → {conta_atual['id']}")
+        log.info("Conta eliminada | id=%s", conta_atual["id"])
+        messagebox.showinfo("Eliminada", "Conta eliminada. A aplicação vai fechar.")
+        janela.destroy()
+    else:
+        lbl_del_msg.config(text=str(obj), fg=C_ERROR)
+        log.error("Eliminar conta falhou | %s", obj)
 
 
 # ══════════════════════════════════════════════════════════════
 # TAB — TRANSAÇÕES
 # ══════════════════════════════════════════════════════════════
 
-class TabTransacoes(Tab):
-    def _construir(self):
-        frm = self._lf("Formulário — Transação")
-        self.e_id        = _label_entry(frm, "ID",            0, col=0, readonly=True)
-        self.cb_tipo     = _label_combo(frm, "Tipo",          1, col=0, values=("receita", "despesa"))
-        self.e_descricao = _label_entry(frm, "Descrição",     2, col=0)
-        self.e_valor     = _label_entry(frm, "Valor (€)",     3, col=0)
-        self.cb_cat      = _label_combo(frm, "Categoria",     0, col=1, values=CATEGORIAS_TRANSACAO)
-        self.e_id_orc    = _label_entry(frm, "ID Orçamento",  1, col=1)
+def construir_tab_transacoes():
+    global e_trans_id, cb_trans_tipo, e_trans_descricao, e_trans_valor
+    global cb_trans_cat, e_trans_id_orc, e_trans_id_conta
+    global e_trans_data_pag, cb_trans_metodo_pag
+    global tabela_transacoes, lbl_msg_trans
 
-        # ID Conta — preenchido e bloqueado com a conta autenticada
-        tk.Label(frm, text="ID Conta", font=F_NORMAL, bg=C_FRAME, fg=C_MUTED, anchor="e"
-                 ).grid(row=2, column=2, sticky="e", padx=(12, 6), pady=5)
-        self.e_id_conta = tk.Entry(frm, width=24, font=F_NORMAL, state="readonly",
-                                   relief="solid", bd=1, bg="#f0f0f0")
-        self.e_id_conta.grid(row=2, column=3, sticky="w", padx=(0, 16), pady=5)
-        _set(self.e_id_conta, self.conta["id"], readonly=True)
+    tab = tk.Frame(notebook, bg=C_BG)
+    notebook.add(tab, text="  Transações  ")
 
-        frm_btn = self._frame_btn()
-        for txt, cmd, tipo in [
-            ("Adicionar", self._adicionar, "criar"),
-            ("Consultar", self._consultar, "consultar"),
-            ("Editar",    self._editar,    "atualizar"),
-            ("Apagar",    self._apagar,    "remover"),
-            ("Limpar",    self._limpar,    "limpar"),
-        ]:
-            _btn(frm_btn, txt, cmd, tipo).pack(side=tk.LEFT, padx=5)
+    frm = lf(tab, "Formulário — Transação")
 
-        frm_tab = self._frame_tab()
-        self.tabela = _treeview(frm_tab,
-            ("ID", "Tipo", "Descrição", "Valor", "Categoria"),
-            [130, 90, 220, 100, 150])
-        self.tabela.bind("<<TreeviewSelect>>", self._selecionar)
-        self._carregar()
+    e_trans_id        = campo(frm, "ID",           0, col=0, readonly=True)
+    cb_trans_tipo     = combo(frm, "Tipo",         1, col=0, values=("receita", "despesa"))
+    e_trans_descricao = campo(frm, "Descrição",    2, col=0)
+    e_trans_valor     = campo(frm, "Valor (€)",    3, col=0)
 
-    def _adicionar(self):
-        tipo  = self.cb_tipo.get()
-        valor = self.e_valor.get()
-        id_orc = self.e_id_orc.get() or None
+    cb_trans_cat        = combo(frm, "Categoria",         0, col=1, values=CATEGORIAS_TRANSACAO)
+    e_trans_id_orc      = campo(frm, "ID Orçamento",      1, col=1)
+    e_trans_data_pag    = campo(frm, "Data Pagamento",    2, col=1)
+    cb_trans_metodo_pag = combo(frm, "Método Pagamento", 3, col=1, values=METODOS_PAG)
 
-        code, obj = adicionar_transacao(
-            tipo, self.e_descricao.get(), valor,
-            self.cb_cat.get(), self.conta["id"], id_orc,
+    set_entry(e_trans_data_pag, datetime.now().strftime("%Y-%m-%d"))
+
+    tk.Label(frm, text="ID Conta", font=F_NORMAL, bg=C_FRAME, fg=C_MUTED, anchor="e"
+             ).grid(row=4, column=0, sticky="e", padx=(12, 6), pady=5)
+    e_trans_id_conta = tk.Entry(frm, width=24, font=F_NORMAL, state="readonly",
+                                relief="solid", bd=1, bg="#f0f0f0")
+    e_trans_id_conta.grid(row=4, column=1, sticky="w", padx=(0, 16), pady=5)
+
+    frm_btn = tk.Frame(tab, bg=C_BG)
+    frm_btn.pack(pady=8)
+    for txt, cmd, tipo in [
+        ("Adicionar", adicionar_transacao_ui, "criar"),
+        ("Consultar", consultar_transacao,    "consultar"),
+        ("Editar",    editar_transacao_ui,    "atualizar"),
+        ("Apagar",    apagar_transacao_ui,    "remover"),
+        ("Limpar",    limpar_transacoes,      "limpar"),
+    ]:
+        btn(frm_btn, txt, cmd, tipo).pack(side=tk.LEFT, padx=5)
+
+    lbl_msg_trans = tk.Label(tab, text="", font=F_SMALL, bg=C_BG)
+    lbl_msg_trans.pack()
+
+    outer = tk.LabelFrame(tab, text="  Registos  ", font=F_TITULO,
+                          bg=C_FRAME, fg=C_TEXTO, relief="solid", bd=1)
+    outer.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 14))
+    inner = tk.Frame(outer, bg=C_FRAME)
+    inner.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
+
+    tabela_transacoes = treeview(inner,
+        ("ID", "Tipo", "Descrição", "Valor", "Categoria"),
+        [130, 90, 220, 100, 150])
+    tabela_transacoes.bind("<<TreeviewSelect>>", selecionar_transacao)
+
+
+def adicionar_transacao_ui():
+    tipo = cb_trans_tipo.get()
+    descricao = e_trans_descricao.get().strip()
+    valor = e_trans_valor.get().strip().replace(",", ".")
+    categoria = cb_trans_cat.get()
+    id_orc = e_trans_id_orc.get().strip().upper() or None
+    data_pagamento = e_trans_data_pag.get().strip()
+    metodo_pagamento = cb_trans_metodo_pag.get()
+
+    if not tipo:
+        return msg_inline(lbl_msg_trans, "Escolha o tipo.", C_WARN)
+    if not descricao:
+        return msg_inline(lbl_msg_trans, "400: Descrição obrigatória.", C_ERROR)
+    if not categoria:
+        return msg_inline(lbl_msg_trans, "Escolha a categoria.", C_WARN)
+    if not data_pagamento:
+        return msg_inline(lbl_msg_trans, "Indique a data do pagamento.", C_WARN)
+    try:
+        datetime.strptime(data_pagamento, "%Y-%m-%d")
+    except ValueError:
+        return msg_inline(lbl_msg_trans, "400: Data inválida. Use YYYY-MM-DD.", C_ERROR)
+    if not metodo_pagamento:
+        return msg_inline(lbl_msg_trans, "Escolha o método de pagamento.", C_WARN)
+
+    try:
+        fval = float(valor)
+        if fval <= 0:
+            raise ValueError
+    except ValueError:
+        return msg_inline(lbl_msg_trans, "400: Valor inválido. Use: 12.50 ou 100.", C_ERROR)
+
+    code, obj = adicionar_transacao(
+        tipo, descricao, fval, categoria, conta_atual["id"], id_orc,
+    )
+    if code != 201:
+        return msg_inline(lbl_msg_trans, f"{code}: {obj}", C_ERROR)
+
+    code_p, obj_p = criar_pagamento(
+        descricao=descricao,
+        valor=fval,
+        data=data_pagamento,
+        metodo=metodo_pagamento,
+        id_transacao=obj["id"],
+    )
+
+    if code_p != 201:
+        # Evita ficar com uma transação sem pagamento associado.
+        apagar_transacao(obj["id"])
+        carregar_tabela_transacoes()
+        atualizar_saldo()
+        return msg_inline(
+            lbl_msg_trans,
+            f"Pagamento falhou: {code_p}: {obj_p}. A transação foi anulada.",
+            C_ERROR,
         )
-        if code != 201:
-            return self.erro(obj)
 
-        # Registar gasto no orçamento se for despesa
-        if tipo == "despesa" and id_orc:
-            code_o, msg_o = registar_gasto(id_orc, valor)
-            if code_o == 200:
-                if "AVISO" in str(msg_o):
-                    self.aviso(msg_o)
-                else:
-                    self.ok(f"Transação adicionada → {obj['id']}  |  {msg_o}")
-            else:
-                self.ok(f"Transação adicionada → {obj['id']} (orçamento não atualizado: {msg_o})")
-        else:
-            self.ok(f"Transação adicionada → {obj['id']}")
+    aviso_orcamento = ""
+    cor_msg = C_SUCCESS
+    if tipo == "despesa" and id_orc:
+        code_o, msg_o = registar_gasto(id_orc, fval)
+        aviso_orcamento = f" | {msg_o}"
+        if code_o != 200 or "AVISO" in str(msg_o):
+            cor_msg = C_WARN
 
-        self._limpar(); self._carregar()
+    msg_inline(
+        lbl_msg_trans,
+        f"✓ Transação {obj['id']} e pagamento {obj_p['id']} criados.{aviso_orcamento}",
+        cor_msg,
+    )
+    set_status(f"Transação e pagamento criados → {obj['id']} / {obj_p['id']}")
+    log.info("Transação adicionada → %s | Pagamento criado → %s", obj["id"], obj_p["id"])
 
-    def _consultar(self):
-        uid = self.e_id.get()
-        if not uid: return self.aviso("Selecione uma transação.")
-        code, obj = encontrar_transacao(uid)
-        if code == 200:
-            self.ok(f"Transação consultada → {uid}")
-            messagebox.showinfo("Transação",
-                f"ID: {obj['id']}\nTipo: {obj['tipo']}\n"
-                f"Descrição: {obj['descricao']}\nValor: {obj['valor']:.2f}€\n"
-                f"Categoria: {obj['categoria']}\nID Orçamento: {obj['id_orcamento'] or '—'}")
-        else:
-            self.erro(obj)
+    limpar_transacoes()
+    carregar_tabela_transacoes()
+    carregar_tabela_pagamentos()
+    atualizar_saldo()
 
-    def _editar(self):
-        uid = self.e_id.get()
-        if not uid: return self.aviso("Selecione uma transação.")
-        code, obj = editar_transacao(
-            uid,
-            descricao=self.e_descricao.get() or None,
-            valor=self.e_valor.get() or None,
-            categoria=self.cb_cat.get() or None,
-            id_orcamento=self.e_id_orc.get() or None,
-        )
-        if code == 200:
-            self.ok(f"Transação atualizada → {uid}")
-            self._limpar(); self._carregar()
-        else:
-            self.erro(obj)
 
-    def _apagar(self):
-        uid = self.e_id.get()
-        if not uid: return self.aviso("Selecione uma transação.")
-        if not self.confirmar("Tem a certeza que pretende apagar esta transação?"):
-            return
-        code, obj = apagar_transacao(uid)
-        if code == 200:
-            self.ok(f"Transação apagada → {uid}")
-            self._limpar(); self._carregar()
-        else:
-            self.erro(obj)
+def consultar_transacao():
+    uid = e_trans_id.get()
+    if not uid:
+        return msg_inline(lbl_msg_trans, "Selecione uma transação.", C_WARN)
+    code, obj = encontrar_transacao(uid)
+    if code == 200:
+        msg_inline(lbl_msg_trans,
+            f"{obj['id']}  |  {obj['tipo']}  |  {obj['descricao']}  |  "
+            f"{obj['valor']:.2f}€  |  {obj['categoria']}", C_SUCCESS)
+        set_status(f"Transação consultada → {uid}")
+        log.info("Transação consultada → %s", uid)
+    else:
+        msg_inline(lbl_msg_trans, f"{code}: {obj}", C_ERROR)
 
-    def _carregar(self):
-        _limpar_tree(self.tabela)
-        code, obj = listar_transacoes(id_conta=self.conta["id"])
-        if code == 200:
-            for t in obj:
-                _inserir_linha(self.tabela, (
-                    t["id"], t["tipo"], t["descricao"],
-                    f"{t['valor']:.2f}€", t["categoria"],
-                ))
 
-    def _limpar(self):
-        _clear(self.e_id, self.cb_tipo, self.e_descricao,
-               self.e_valor, self.cb_cat, self.e_id_orc)
+def editar_transacao_ui():
+    uid = e_trans_id.get()
+    if not uid:
+        return msg_inline(lbl_msg_trans, "Selecione uma transação.", C_WARN)
+    valor_raw = e_trans_valor.get().strip().replace(",", ".")
+    try:
+        novo_val = float(valor_raw) if valor_raw else None
+        if novo_val is not None and novo_val <= 0:
+            raise ValueError
+    except ValueError:
+        return msg_inline(lbl_msg_trans, "400: Valor inválido.", C_ERROR)
 
-    def _selecionar(self, _):
-        sel = self.tabela.focus()
-        if not sel: return
-        v = self.tabela.item(sel, "values")
-        _set(self.e_id, v[0], readonly=True)
-        self.cb_tipo.set(v[1])
-        _set(self.e_descricao, v[2])
-        _set(self.e_valor, v[3].replace("€", ""))
-        self.cb_cat.set(v[4])
+    code, obj = editar_transacao(
+        uid,
+        descricao=e_trans_descricao.get() or None,
+        valor=novo_val,
+        categoria=cb_trans_cat.get() or None,
+        id_orcamento=e_trans_id_orc.get().strip().upper() or None,
+    )
+    if code == 200:
+        msg_inline(lbl_msg_trans, f"✓ Transação {uid} atualizada.", C_SUCCESS)
+        set_status(f"Transação atualizada → {uid}")
+        log.info("Transação atualizada → %s", uid)
+        limpar_transacoes()
+        carregar_tabela_transacoes()
+        atualizar_saldo()
+    else:
+        msg_inline(lbl_msg_trans, f"{code}: {obj}", C_ERROR)
+
+
+def apagar_transacao_ui():
+    uid = e_trans_id.get()
+    if not uid:
+        return msg_inline(lbl_msg_trans, "Selecione uma transação.", C_WARN)
+    if not messagebox.askyesno("Confirmação", f"Apagar transação {uid}?"):
+        return
+    code, obj = apagar_transacao(uid)
+    if code == 200:
+        msg_inline(lbl_msg_trans, f"✓ Transação {uid} apagada.", C_SUCCESS)
+        set_status(f"Transação apagada → {uid}")
+        log.info("Transação apagada → %s", uid)
+        limpar_transacoes()
+        carregar_tabela_transacoes()
+        atualizar_saldo()
+    else:
+        msg_inline(lbl_msg_trans, f"{code}: {obj}", C_ERROR)
+
+
+def carregar_tabela_transacoes():
+    limpar_tree(tabela_transacoes)
+    code, obj = listar_transacoes(id_conta=conta_atual.get("id"))
+    if code == 200:
+        for t in obj:
+            linha(tabela_transacoes, (t["id"], t["tipo"], t["descricao"],
+                                      f"{t['valor']:.2f}€", t["categoria"]))
+
+
+def limpar_transacoes():
+    limpar_widgets(e_trans_id, cb_trans_tipo, e_trans_descricao,
+                   e_trans_valor, cb_trans_cat, e_trans_id_orc,
+                   e_trans_data_pag, cb_trans_metodo_pag)
+    set_entry(e_trans_data_pag, datetime.now().strftime("%Y-%m-%d"))
+
+
+def selecionar_transacao(event):
+    sel = tabela_transacoes.focus()
+    if not sel:
+        return
+    v = tabela_transacoes.item(sel, "values")
+    set_entry(e_trans_id, v[0], readonly=True)
+    cb_trans_tipo.set(v[1])
+    set_entry(e_trans_descricao, v[2])
+    set_entry(e_trans_valor, v[3].replace("€", "").replace("+", "").replace("-", ""))
+    cb_trans_cat.set(v[4])
 
 
 # ══════════════════════════════════════════════════════════════
 # TAB — ORÇAMENTOS
 # ══════════════════════════════════════════════════════════════
 
-class TabOrcamentos(Tab):
-    def _construir(self):
-        frm = self._lf("Formulário — Orçamento")
-        self.e_id      = _label_entry(frm, "ID",         0, col=0, readonly=True)
-        self.cb_cat    = _label_combo(frm, "Categoria",  1, col=0, values=CATEGORIAS_ORCAMENTO)
-        self.e_limite  = _label_entry(frm, "Limite (€)", 2, col=0)
-        self.cb_period = _label_combo(frm, "Período",    3, col=0, values=PERIODOS)
+def construir_tab_orcamentos():
+    global e_orc_id, cb_orc_cat, e_orc_limite, cb_orc_period
+    global tabela_orcamentos, lbl_msg_orc
 
-        frm_btn = self._frame_btn()
-        for txt, cmd, tipo in [
-            ("Criar",     self._criar,     "criar"),
-            ("Consultar", self._consultar, "consultar"),
-            ("Atualizar", self._atualizar, "atualizar"),
-            ("Remover",   self._remover,   "remover"),
-            ("Limpar",    self._limpar,    "limpar"),
-        ]:
-            _btn(frm_btn, txt, cmd, tipo).pack(side=tk.LEFT, padx=5)
+    tab = tk.Frame(notebook, bg=C_BG)
+    notebook.add(tab, text="  Orçamentos  ")
 
-        frm_tab = self._frame_tab()
-        self.tabela = _treeview(frm_tab,
-            ("ID", "Categoria", "Limite", "Período", "Gasto Atual", "Restante"),
-            [120, 160, 100, 100, 110, 110])
-        self.tabela.tag_configure("excedido", background="#ffe0e0", foreground="#c0392b")
-        self.tabela.bind("<<TreeviewSelect>>", self._selecionar)
-        self._carregar()
+    frm = lf(tab, "Formulário — Orçamento")
+    e_orc_id      = campo(frm, "ID",         0, col=0, readonly=True)
+    cb_orc_cat    = combo(frm, "Categoria",  1, col=0, values=CATEGORIAS_ORCAMENTO)
+    e_orc_limite  = campo(frm, "Limite (€)", 2, col=0)
+    cb_orc_period = combo(frm, "Período",    3, col=0, values=PERIODOS)
 
-    def _criar(self):
-        code, obj = criar_orcamento(self.cb_cat.get(), self.e_limite.get(), self.cb_period.get())
-        if code == 201:
-            self.ok(f"Orçamento criado → {obj['id']}")
-            self._limpar(); self._carregar()
-        else:
-            self.erro(obj)
+    frm_btn = tk.Frame(tab, bg=C_BG)
+    frm_btn.pack(pady=8)
+    for txt, cmd, tipo in [
+        ("Criar",     criar_orcamento_ui,     "criar"),
+        ("Consultar", consultar_orcamento_ui, "consultar"),
+        ("Atualizar", atualizar_orcamento_ui, "atualizar"),
+        ("Remover",   remover_orcamento_ui,   "remover"),
+        ("Limpar",    limpar_orcamentos,      "limpar"),
+    ]:
+        btn(frm_btn, txt, cmd, tipo).pack(side=tk.LEFT, padx=5)
 
-    def _consultar(self):
-        uid = self.e_id.get()
-        if not uid: return self.aviso("Selecione um orçamento.")
-        code, obj = consultar_orcamento(uid)
-        if code == 200:
-            restante = obj["limite"] - obj["gasto_atual"]
-            self.ok(f"Orçamento consultado → {uid}")
-            messagebox.showinfo("Orçamento",
-                f"ID: {obj['id']}\nCategoria: {obj['categoria']}\n"
-                f"Limite: {obj['limite']:.2f}€\nPeríodo: {obj['periodo']}\n"
-                f"Gasto atual: {obj['gasto_atual']:.2f}€\nRestante: {restante:.2f}€")
-        else:
-            self.erro(obj)
+    lbl_msg_orc = tk.Label(tab, text="", font=F_SMALL, bg=C_BG)
+    lbl_msg_orc.pack()
 
-    def _atualizar(self):
-        uid = self.e_id.get()
-        if not uid: return self.aviso("Selecione um orçamento.")
-        code, obj = atualizar_orcamento(
-            uid,
-            limite=self.e_limite.get() or None,
-            categoria=self.cb_cat.get() or None,
-            periodo=self.cb_period.get() or None,
-        )
-        if code == 200:
-            self.ok(f"Orçamento atualizado → {uid}")
-            self._limpar(); self._carregar()
-        else:
-            self.erro(obj)
+    outer = tk.LabelFrame(tab, text="  Registos  ", font=F_TITULO,
+                          bg=C_FRAME, fg=C_TEXTO, relief="solid", bd=1)
+    outer.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 14))
+    inner = tk.Frame(outer, bg=C_FRAME)
+    inner.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
 
-    def _remover(self):
-        uid = self.e_id.get()
-        if not uid: return self.aviso("Selecione um orçamento.")
-        if not self.confirmar("Tem a certeza que pretende remover este orçamento?"):
-            return
-        code, obj = remover_orcamento(uid)
-        if code == 200:
-            self.ok(f"Orçamento removido → {uid}")
-            self._limpar(); self._carregar()
-        else:
-            self.erro(obj)
+    tabela_orcamentos = treeview(inner,
+        ("ID", "Categoria", "Limite", "Período", "Gasto Atual", "Restante"),
+        [120, 160, 100, 100, 110, 110])
+    tabela_orcamentos.bind("<<TreeviewSelect>>", selecionar_orcamento)
 
-    def _carregar(self):
-        _limpar_tree(self.tabela)
-        code, obj = listar_orcamentos()
-        if code == 200:
-            for oid, d in obj.items():
-                restante = d["limite"] - d["gasto_atual"]
-                excedido = restante < 0
-                tag = "excedido" if excedido else ("par" if len(self.tabela.get_children()) % 2 == 0 else "impar")
-                self.tabela.insert("", tk.END, tags=(tag,), values=(
-                    oid, d["categoria"],
-                    f"{d['limite']:.2f}€", d["periodo"],
-                    f"{d['gasto_atual']:.2f}€",
-                    f"{restante:.2f}€",
-                ))
 
-    def _limpar(self):
-        _clear(self.e_id, self.cb_cat, self.e_limite, self.cb_period)
+def criar_orcamento_ui():
+    lim_raw = e_orc_limite.get().strip().replace(",", ".")
+    try:
+        fv = float(lim_raw)
+        if fv <= 0:
+            raise ValueError
+    except ValueError:
+        return msg_inline(lbl_msg_orc, "400: Limite inválido.", C_ERROR)
+    code, obj = criar_orcamento(cb_orc_cat.get(), fv, cb_orc_period.get())
+    if code == 201:
+        msg_inline(lbl_msg_orc, f"✓ Orçamento {obj['id']} criado.", C_SUCCESS)
+        set_status(f"Orçamento criado → {obj['id']}")
+        log.info("Orçamento criado → %s", obj["id"])
+        limpar_orcamentos()
+        carregar_tabela_orcamentos()
+    else:
+        msg_inline(lbl_msg_orc, f"{code}: {obj}", C_ERROR)
 
-    def _selecionar(self, _):
-        sel = self.tabela.focus()
-        if not sel: return
-        v = self.tabela.item(sel, "values")
-        _set(self.e_id, v[0], readonly=True)
-        self.cb_cat.set(v[1])
-        _set(self.e_limite, v[2].replace("€", ""))
-        self.cb_period.set(v[3])
+
+def consultar_orcamento_ui():
+    uid = e_orc_id.get()
+    if not uid:
+        return msg_inline(lbl_msg_orc, "Selecione um orçamento.", C_WARN)
+    code, obj = consultar_orcamento(uid)
+    if code == 200:
+        rest = obj["limite"] - obj["gasto_atual"]
+        msg_inline(lbl_msg_orc,
+            f"{obj['id']}  |  {obj['categoria']}  |  limite {obj['limite']:.2f}€  |  "
+            f"gasto {obj['gasto_atual']:.2f}€  |  restante {rest:.2f}€", C_SUCCESS)
+        set_status(f"Orçamento consultado → {uid}")
+        log.info("Orçamento consultado → %s", uid)
+    else:
+        msg_inline(lbl_msg_orc, f"{code}: {obj}", C_ERROR)
+
+
+def atualizar_orcamento_ui():
+    uid = e_orc_id.get()
+    if not uid:
+        return msg_inline(lbl_msg_orc, "Selecione um orçamento.", C_WARN)
+    lim_raw = e_orc_limite.get().strip().replace(",", ".")
+    try:
+        novo_l = float(lim_raw) if lim_raw else None
+        if novo_l is not None and novo_l <= 0:
+            raise ValueError
+    except ValueError:
+        return msg_inline(lbl_msg_orc, "400: Limite inválido.", C_ERROR)
+    code, obj = atualizar_orcamento(uid,
+        limite=novo_l, categoria=cb_orc_cat.get() or None,
+        periodo=cb_orc_period.get() or None)
+    if code == 200:
+        msg_inline(lbl_msg_orc, f"✓ Orçamento {uid} atualizado.", C_SUCCESS)
+        set_status(f"Orçamento atualizado → {uid}")
+        log.info("Orçamento atualizado → %s", uid)
+        limpar_orcamentos()
+        carregar_tabela_orcamentos()
+    else:
+        msg_inline(lbl_msg_orc, f"{code}: {obj}", C_ERROR)
+
+
+def remover_orcamento_ui():
+    uid = e_orc_id.get()
+    if not uid:
+        return msg_inline(lbl_msg_orc, "Selecione um orçamento.", C_WARN)
+    if not messagebox.askyesno("Confirmação", f"Remover orçamento {uid}?"):
+        return
+    code, obj = remover_orcamento(uid)
+    if code == 200:
+        msg_inline(lbl_msg_orc, f"✓ Orçamento {uid} removido.", C_SUCCESS)
+        set_status(f"Orçamento removido → {uid}")
+        log.info("Orçamento removido → %s", uid)
+        limpar_orcamentos()
+        carregar_tabela_orcamentos()
+    else:
+        msg_inline(lbl_msg_orc, f"{code}: {obj}", C_ERROR)
+
+
+def carregar_tabela_orcamentos():
+    limpar_tree(tabela_orcamentos)
+    code, obj = listar_orcamentos()
+    if code == 200:
+        for oid, d in obj.items():
+            rest     = d["limite"] - d["gasto_atual"]
+            excedido = rest < 0
+            tag_extra = "excedido" if excedido else None
+            linha(tabela_orcamentos, (oid, d["categoria"], f"{d['limite']:.2f}€",
+                                      d["periodo"], f"{d['gasto_atual']:.2f}€",
+                                      f"{rest:.2f}€"), tag_extra)
+
+
+def limpar_orcamentos():
+    limpar_widgets(e_orc_id, cb_orc_cat, e_orc_limite, cb_orc_period)
+
+
+def selecionar_orcamento(event):
+    sel = tabela_orcamentos.focus()
+    if not sel:
+        return
+    v = tabela_orcamentos.item(sel, "values")
+    set_entry(e_orc_id, v[0], readonly=True)
+    cb_orc_cat.set(v[1])
+    set_entry(e_orc_limite, v[2].replace("€", ""))
+    cb_orc_period.set(v[3])
 
 
 # ══════════════════════════════════════════════════════════════
 # TAB — PAGAMENTOS
 # ══════════════════════════════════════════════════════════════
 
-class TabPagamentos(Tab):
-    def _construir(self):
-        frm = self._lf("Formulário — Pagamento")
-        self.e_id        = _label_entry(frm, "ID",               0, col=0, readonly=True)
-        self.e_descricao = _label_entry(frm, "Descrição",        1, col=0)
-        self.e_valor     = _label_entry(frm, "Valor (€)",        2, col=0)
-        self.e_data      = _label_entry(frm, "Data (YYYY-MM-DD)", 3, col=0)
-        self.cb_metodo   = _label_combo(frm, "Método",           0, col=1, values=METODOS_PAG)
-        self.e_id_trans  = _label_entry(frm, "ID Transação",     1, col=1)
+def construir_tab_pagamentos():
+    global e_pag_id, e_pag_descricao, e_pag_valor, e_pag_data
+    global cb_pag_metodo, e_pag_id_trans
+    global tabela_pagamentos, lbl_msg_pag
 
-        # Sugestão de data de hoje
-        _set(self.e_data, datetime.now().strftime("%Y-%m-%d"))
+    tab = tk.Frame(notebook, bg=C_BG)
+    notebook.add(tab, text="  Pagamentos  ")
 
-        frm_btn = self._frame_btn()
-        for txt, cmd, tipo in [
-            ("Criar",     self._criar,     "criar"),
-            ("Consultar", self._consultar, "consultar"),
-            ("Atualizar", self._atualizar, "atualizar"),
-            ("Remover",   self._remover,   "remover"),
-            ("Limpar",    self._limpar,    "limpar"),
-        ]:
-            _btn(frm_btn, txt, cmd, tipo).pack(side=tk.LEFT, padx=5)
+    frm = lf(tab, "Formulário — Pagamento")
+    e_pag_id        = campo(frm, "ID",                0, col=0, readonly=True)
+    e_pag_descricao = campo(frm, "Descrição",         1, col=0)
+    e_pag_valor     = campo(frm, "Valor (€)",         2, col=0)
+    e_pag_data      = campo(frm, "Data (YYYY-MM-DD)", 3, col=0)
+    cb_pag_metodo   = combo(frm, "Método",            0, col=1, values=METODOS_PAG)
+    e_pag_id_trans  = campo(frm, "ID Transação",      1, col=1)
+    set_entry(e_pag_data, datetime.now().strftime("%Y-%m-%d"))
 
-        frm_tab = self._frame_tab()
-        self.tabela = _treeview(frm_tab,
-            ("ID", "Descrição", "Valor", "Data", "Método", "ID Transação"),
-            [120, 200, 90, 110, 120, 130])
-        self.tabela.bind("<<TreeviewSelect>>", self._selecionar)
-        self._carregar()
+    frm_btn = tk.Frame(tab, bg=C_BG)
+    frm_btn.pack(pady=8)
+    for txt, cmd, tipo in [
+        ("Criar",     criar_pagamento_ui,     "criar"),
+        ("Consultar", consultar_pagamento_ui, "consultar"),
+        ("Atualizar", atualizar_pagamento_ui, "atualizar"),
+        ("Remover",   remover_pagamento_ui,   "remover"),
+        ("Limpar",    limpar_pagamentos,      "limpar"),
+    ]:
+        btn(frm_btn, txt, cmd, tipo).pack(side=tk.LEFT, padx=5)
 
-    def _criar(self):
-        code, obj = criar_pagamento(
-            self.e_descricao.get(), self.e_valor.get(),
-            self.e_data.get(), self.cb_metodo.get(),
-            self.e_id_trans.get() or None,
-        )
-        if code == 201:
-            self.ok(f"Pagamento criado → {obj['id']}")
-            self._limpar(); self._carregar()
-        else:
-            self.erro(obj)
+    lbl_msg_pag = tk.Label(tab, text="", font=F_SMALL, bg=C_BG)
+    lbl_msg_pag.pack()
 
-    def _consultar(self):
-        uid = self.e_id.get()
-        if not uid: return self.aviso("Selecione um pagamento.")
-        code, obj = consultar_pagamento(uid)
-        if code == 200:
-            self.ok(f"Pagamento consultado → {uid}")
-            messagebox.showinfo("Pagamento",
-                f"ID: {obj['id']}\nDescrição: {obj['descricao']}\n"
-                f"Valor: {obj['valor']:.2f}€\nData: {obj['data']}\n"
-                f"Método: {obj['metodo']}\nID Transação: {obj['id_transacao'] or '—'}")
-        else:
-            self.erro(obj)
+    outer = tk.LabelFrame(tab, text="  Registos  ", font=F_TITULO,
+                          bg=C_FRAME, fg=C_TEXTO, relief="solid", bd=1)
+    outer.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 14))
+    inner = tk.Frame(outer, bg=C_FRAME)
+    inner.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
 
-    def _atualizar(self):
-        uid = self.e_id.get()
-        if not uid: return self.aviso("Selecione um pagamento.")
-        code, obj = atualizar_pagamento(
-            uid,
-            descricao=self.e_descricao.get() or None,
-            valor=self.e_valor.get() or None,
-            data=self.e_data.get() or None,
-            metodo=self.cb_metodo.get() or None,
-            id_transacao=self.e_id_trans.get() or None,
-        )
-        if code == 200:
-            self.ok(f"Pagamento atualizado → {uid}")
-            self._limpar(); self._carregar()
-        else:
-            self.erro(obj)
-
-    def _remover(self):
-        uid = self.e_id.get()
-        if not uid: return self.aviso("Selecione um pagamento.")
-        if not self.confirmar("Tem a certeza que pretende remover este pagamento?"):
-            return
-        code, obj = remover_pagamento(uid)
-        if code == 200:
-            self.ok(f"Pagamento removido → {uid}")
-            self._limpar(); self._carregar()
-        else:
-            self.erro(obj)
-
-    def _carregar(self):
-        _limpar_tree(self.tabela)
-        code, obj = listar_pagamentos()
-        if code == 200:
-            for pid, d in obj.items():
-                _inserir_linha(self.tabela, (
-                    pid, d["descricao"], f"{d['valor']:.2f}€",
-                    d["data"], d["metodo"], d["id_transacao"] or "—",
-                ))
-
-    def _limpar(self):
-        _clear(self.e_id, self.e_descricao, self.e_valor,
-               self.e_data, self.cb_metodo, self.e_id_trans)
-        _set(self.e_data, datetime.now().strftime("%Y-%m-%d"))
-
-    def _selecionar(self, _):
-        sel = self.tabela.focus()
-        if not sel: return
-        v = self.tabela.item(sel, "values")
-        _set(self.e_id, v[0], readonly=True)
-        _set(self.e_descricao, v[1])
-        _set(self.e_valor, v[2].replace("€", ""))
-        _set(self.e_data, v[3])
-        self.cb_metodo.set(v[4])
-        _set(self.e_id_trans, "" if v[5] == "—" else v[5])
+    tabela_pagamentos = treeview(inner,
+        ("ID", "Descrição", "Valor", "Data", "Método", "ID Transação"),
+        [120, 200, 90, 110, 120, 130])
+    tabela_pagamentos.bind("<<TreeviewSelect>>", selecionar_pagamento)
 
 
-# ══════════════════════════════════════════════════════════════
-# FRAME DE LOGIN
-# ══════════════════════════════════════════════════════════════
+def criar_pagamento_ui():
+    valor_raw = e_pag_valor.get().strip().replace(",", ".")
+    try:
+        fv = float(valor_raw)
+        if fv <= 0:
+            raise ValueError
+    except ValueError:
+        return msg_inline(lbl_msg_pag, "400: Valor inválido.", C_ERROR)
+    code, obj = criar_pagamento(e_pag_descricao.get(), fv,
+                                e_pag_data.get(), cb_pag_metodo.get(),
+                                e_pag_id_trans.get() or None)
+    if code == 201:
+        msg_inline(lbl_msg_pag, f"✓ Pagamento {obj['id']} criado.", C_SUCCESS)
+        set_status(f"Pagamento criado → {obj['id']}")
+        log.info("Pagamento criado → %s", obj["id"])
+        limpar_pagamentos()
+        carregar_tabela_pagamentos()
+    else:
+        msg_inline(lbl_msg_pag, f"{code}: {obj}", C_ERROR)
 
-class LoginFrame(tk.Frame):
-    def __init__(self, root, on_login):
-        super().__init__(root, bg=C_DARK)
-        self.on_login = on_login
-        self._construir()
 
-    def _construir(self):
-        # Card central
-        card = tk.Frame(self, bg=C_FRAME, relief="flat", bd=0)
-        card.place(relx=0.5, rely=0.5, anchor="center", width=380, height=460)
+def consultar_pagamento_ui():
+    uid = e_pag_id.get()
+    if not uid:
+        return msg_inline(lbl_msg_pag, "Selecione um pagamento.", C_WARN)
+    code, obj = consultar_pagamento(uid)
+    if code == 200:
+        msg_inline(lbl_msg_pag,
+            f"{obj['id']}  |  {obj['descricao']}  |  {obj['valor']:.2f}€  |  "
+            f"{obj['data']}  |  {obj['metodo']}", C_SUCCESS)
+        set_status(f"Pagamento consultado → {uid}")
+        log.info("Pagamento consultado → %s", uid)
+    else:
+        msg_inline(lbl_msg_pag, f"{code}: {obj}", C_ERROR)
 
-        # Topo colorido do card
-        top = tk.Frame(card, bg=C_ACCENT, height=8)
-        top.pack(fill=tk.X)
 
-        # Ícone e título
-        tk.Label(card, text="💰", font=("Helvetica", 36), bg=C_FRAME
-                 ).pack(pady=(30, 4))
-        tk.Label(card, text="Gestão Financeira", font=F_GRANDE,
-                 bg=C_FRAME, fg=C_DARK).pack()
-        tk.Label(card, text="Inicie sessão para continuar", font=F_SMALL,
-                 bg=C_FRAME, fg=C_MUTED).pack(pady=(4, 24))
+def atualizar_pagamento_ui():
+    uid = e_pag_id.get()
+    if not uid:
+        return msg_inline(lbl_msg_pag, "Selecione um pagamento.", C_WARN)
+    valor_raw = e_pag_valor.get().strip().replace(",", ".")
+    try:
+        novo_v = float(valor_raw) if valor_raw else None
+        if novo_v is not None and novo_v <= 0:
+            raise ValueError
+    except ValueError:
+        return msg_inline(lbl_msg_pag, "400: Valor inválido.", C_ERROR)
+    code, obj = atualizar_pagamento(uid,
+        descricao=e_pag_descricao.get() or None,
+        valor=novo_v,
+        data=e_pag_data.get() or None,
+        metodo=cb_pag_metodo.get() or None,
+        id_transacao=e_pag_id_trans.get() or None)
+    if code == 200:
+        msg_inline(lbl_msg_pag, f"✓ Pagamento {uid} atualizado.", C_SUCCESS)
+        set_status(f"Pagamento atualizado → {uid}")
+        log.info("Pagamento atualizado → %s", uid)
+        limpar_pagamentos()
+        carregar_tabela_pagamentos()
+    else:
+        msg_inline(lbl_msg_pag, f"{code}: {obj}", C_ERROR)
 
-        ttk.Separator(card).pack(fill=tk.X, padx=30)
 
-        # Campos
-        frm = tk.Frame(card, bg=C_FRAME)
-        frm.pack(padx=30, pady=20, fill=tk.X)
+def remover_pagamento_ui():
+    uid = e_pag_id.get()
+    if not uid:
+        return msg_inline(lbl_msg_pag, "Selecione um pagamento.", C_WARN)
+    if not messagebox.askyesno("Confirmação", f"Remover pagamento {uid}?"):
+        return
+    code, obj = remover_pagamento(uid)
+    if code == 200:
+        msg_inline(lbl_msg_pag, f"✓ Pagamento {uid} removido.", C_SUCCESS)
+        set_status(f"Pagamento removido → {uid}")
+        log.info("Pagamento removido → %s", uid)
+        limpar_pagamentos()
+        carregar_tabela_pagamentos()
+    else:
+        msg_inline(lbl_msg_pag, f"{code}: {obj}", C_ERROR)
 
-        tk.Label(frm, text="ID da Conta", font=F_BOLD, bg=C_FRAME, fg=C_TEXTO,
-                 anchor="w").pack(fill=tk.X)
-        self.e_id = tk.Entry(frm, font=F_NORMAL, relief="solid", bd=1, width=30)
-        self.e_id.pack(fill=tk.X, pady=(4, 14), ipady=6)
 
-        tk.Label(frm, text="PIN", font=F_BOLD, bg=C_FRAME, fg=C_TEXTO,
-                 anchor="w").pack(fill=tk.X)
-        self.e_pin = tk.Entry(frm, font=F_NORMAL, relief="solid", bd=1,
-                              show="*", width=30)
-        self.e_pin.pack(fill=tk.X, pady=(4, 4), ipady=6)
-        self.e_pin.bind("<Return>", lambda e: self._login())
+def carregar_tabela_pagamentos():
+    limpar_tree(tabela_pagamentos)
+    code, obj = listar_pagamentos()
+    if code == 200:
+        for pid, d in obj.items():
+            linha(tabela_pagamentos, (pid, d["descricao"], f"{d['valor']:.2f}€",
+                                      d["data"], d["metodo"], d["id_transacao"] or "—"))
 
-        # Mensagem de erro inline
-        self.lbl_erro = tk.Label(frm, text="", font=F_SMALL, bg=C_FRAME, fg=C_ERROR)
-        self.lbl_erro.pack(fill=tk.X)
 
-        # Botões
-        frm_btn = tk.Frame(card, bg=C_FRAME)
-        frm_btn.pack(padx=30, fill=tk.X)
-        _btn(frm_btn, "Entrar",         self._login,    "login",    width=16).pack(fill=tk.X, ipady=4, pady=(4, 6))
-        _btn(frm_btn, "Criar Conta",    self._registar, "registar", width=16).pack(fill=tk.X, ipady=4)
+def limpar_pagamentos():
+    limpar_widgets(e_pag_id, e_pag_descricao, e_pag_valor,
+                   e_pag_data, cb_pag_metodo, e_pag_id_trans)
+    set_entry(e_pag_data, datetime.now().strftime("%Y-%m-%d"))
 
-    def _login(self):
-        uid = self.e_id.get().strip()
-        pin = self.e_pin.get().strip()
 
-        if not uid or not pin:
-            self._mostrar_erro("Preencha o ID e o PIN.")
-            return
-
-        log.info("AUTH tentativa de login | id=%s", uid)
-        code, obj = verificar_login(uid, pin)
-
-        if code == 200:
-            log.info("AUTH login bem-sucedido | id=%s | nome=%s", uid, obj["nome"])
-            self.on_login(obj)
-        else:
-            log.error("AUTH login falhado | id=%s | motivo=%s", uid, obj)
-            self._mostrar_erro(str(obj))
-
-    def _registar(self):
-        # Janela de registo
-        win = tk.Toplevel(self)
-        win.title("Criar Conta")
-        win.geometry("340x320")
-        win.resizable(False, False)
-        win.configure(bg=C_FRAME)
-        win.grab_set()
-
-        tk.Label(win, text="Nova Conta", font=F_TITULO, bg=C_FRAME, fg=C_DARK
-                 ).pack(pady=(20, 4))
-        tk.Label(win, text="Preencha os dados abaixo", font=F_SMALL, bg=C_FRAME, fg=C_MUTED
-                 ).pack(pady=(0, 16))
-
-        frm = tk.Frame(win, bg=C_FRAME)
-        frm.pack(padx=30, fill=tk.X)
-
-        for label, attr, kw in [
-            ("Nome",            "r_nome", {}),
-            ("NIF (9 dígitos)", "r_nif",  {}),
-            ("PIN (4 dígitos)", "r_pin",  {"show": "*"}),
-        ]:
-            tk.Label(frm, text=label, font=F_BOLD, bg=C_FRAME, fg=C_TEXTO,
-                     anchor="w").pack(fill=tk.X, pady=(6, 0))
-            e = tk.Entry(frm, font=F_NORMAL, relief="solid", bd=1, **kw)
-            e.pack(fill=tk.X, ipady=5)
-            setattr(self, attr, e)
-
-        lbl_r_erro = tk.Label(win, text="", font=F_SMALL, bg=C_FRAME, fg=C_ERROR)
-        lbl_r_erro.pack(pady=4)
-
-        def _submeter():
-            code, obj = criar_conta(self.r_nome.get(), self.r_nif.get(), self.r_pin.get())
-            if code == 201:
-                log.info("AUTH nova conta criada | id=%s | nome=%s", obj["id"], obj["nome"])
-                win.destroy()
-                messagebox.showinfo("Conta criada",
-                    f"Conta criada com sucesso!\n\nO seu ID é:\n{obj['id']}\n\nGuarde-o para fazer login.")
-            else:
-                log.error("AUTH criar conta falhado | motivo=%s", obj)
-                lbl_r_erro.config(text=str(obj))
-
-        _btn(tk.Frame(win, bg=C_FRAME).pack(fill=tk.X, padx=30) or win,
-             "Criar Conta", _submeter, "criar", width=20
-             ).pack(fill=tk.X, padx=30, ipady=4, pady=4)
-
-    def _mostrar_erro(self, msg):
-        self.lbl_erro.config(text=msg)
-        self.after(4000, lambda: self.lbl_erro.config(text=""))
+def selecionar_pagamento(event):
+    sel = tabela_pagamentos.focus()
+    if not sel:
+        return
+    v = tabela_pagamentos.item(sel, "values")
+    set_entry(e_pag_id, v[0], readonly=True)
+    set_entry(e_pag_descricao, v[1])
+    set_entry(e_pag_valor, v[2].replace("€", ""))
+    set_entry(e_pag_data, v[3])
+    cb_pag_metodo.set(v[4])
+    set_entry(e_pag_id_trans, "" if v[5] == "—" else v[5])
 
 
 # ══════════════════════════════════════════════════════════════
-# APP PRINCIPAL
+# JANELA PRINCIPAL
 # ══════════════════════════════════════════════════════════════
 
-class App:
-    def __init__(self):
-        self.root = tk.Tk()
-        self.root.title("Gestão Financeira")
-        self.root.geometry("1100x720")
-        self.root.minsize(900, 600)
-        self.root.configure(bg=C_DARK)
-        _aplicar_estilos(self.root)
+janela = tk.Tk()
+janela.title("Gestão Financeira")
+janela.geometry("1100x720")
+janela.minsize(900, 600)
+janela.configure(bg=C_DARK)
 
-        self._frame_atual = None
-        self._mostrar_login()
-        log.info("APP iniciada")
-        self.root.mainloop()
+aplicar_estilos()
 
-    # ── Navegação login ↔ app ─────────────────────────────────
-    def _mostrar_login(self):
-        if self._frame_atual:
-            self._frame_atual.destroy()
-        lf = LoginFrame(self.root, on_login=self._abrir_app)
-        lf.pack(fill=tk.BOTH, expand=True)
-        self._frame_atual = lf
+# construir ambos os frames (login e app)
+construir_login()
+construir_app()
 
-    def _abrir_app(self, conta):
-        if self._frame_atual:
-            self._frame_atual.destroy()
-        mf = MainFrame(self.root, conta, on_logout=self._mostrar_login)
-        mf.pack(fill=tk.BOTH, expand=True)
-        self._frame_atual = mf
+# arrancar no login
+frame_atual = None
+mostrar_frame(frame_login)
 
-
-# ══════════════════════════════════════════════════════════════
-# FRAME PRINCIPAL (após login)
-# ══════════════════════════════════════════════════════════════
-
-class MainFrame(tk.Frame):
-    def __init__(self, root, conta, on_logout):
-        super().__init__(root, bg=C_BG)
-        self.conta     = conta
-        self.on_logout = on_logout
-        self._construir()
-
-    def _construir(self):
-        self._construir_header()
-        self._construir_notebook()
-        self._construir_statusbar()
-
-    def _construir_header(self):
-        hdr = tk.Frame(self, bg=C_DARK, height=56)
-        hdr.pack(fill=tk.X)
-        hdr.pack_propagate(False)
-
-        tk.Label(hdr, text="💰  Gestão Financeira",
-                 bg=C_DARK, fg="white", font=("Helvetica", 14, "bold")
-                 ).pack(side=tk.LEFT, padx=20, pady=14)
-
-        # Logout
-        def _logout():
-            if messagebox.askyesno("Logout", "Tem a certeza que pretende sair?"):
-                log.info("AUTH logout | id=%s", self.conta["id"])
-                self.on_logout()
-
-        tk.Button(hdr, text="⎋  Sair", command=_logout,
-                  bg=C_ACCENT, fg="white", relief="flat",
-                  font=F_BTN, cursor="hand2", padx=12, pady=6
-                  ).pack(side=tk.RIGHT, padx=16, pady=10)
-
-        # Utilizador
-        tk.Label(hdr, text=f"👤  {self.conta['nome']}",
-                 bg=C_DARK, fg="#a0aec0", font=F_SMALL
-                 ).pack(side=tk.RIGHT, padx=4)
-
-        # Relógio
-        self.lbl_hora = tk.Label(hdr, text="", bg=C_DARK, fg="#636e72", font=F_SMALL)
-        self.lbl_hora.pack(side=tk.RIGHT, padx=16)
-        self._tick()
-
-    def _tick(self):
-        self.lbl_hora.config(text=datetime.now().strftime("%d/%m/%Y  %H:%M:%S"))
-        self.after(1000, self._tick)
-
-    def _construir_notebook(self):
-        nb = ttk.Notebook(self)
-        nb.pack(fill=tk.BOTH, expand=True)
-        ss = self._set_status
-        TabMinhaConta(nb,  "Minha Conta",  self.conta, ss)
-        TabTransacoes(nb,  "Transações",   self.conta, ss)
-        TabOrcamentos(nb,  "Orçamentos",   self.conta, ss)
-        TabPagamentos(nb,  "Pagamentos",   self.conta, ss)
-
-    def _construir_statusbar(self):
-        bar = tk.Frame(self, bg="#2d3436", height=30)
-        bar.pack(fill=tk.X, side=tk.BOTTOM)
-        bar.pack_propagate(False)
-
-        self._status_icon = tk.Label(bar, text="●", bg="#2d3436", fg=C_SUCCESS,
-                                     font=("Helvetica", 11))
-        self._status_icon.pack(side=tk.LEFT, padx=(12, 4), pady=5)
-
-        self._status_var = tk.StringVar(value="Pronto.")
-        tk.Label(bar, textvariable=self._status_var, bg="#2d3436",
-                 fg="#dfe6e9", font=F_SMALL, anchor="w"
-                 ).pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-        tk.Label(bar, text="Gestão Financeira  v1.0",
-                 bg="#2d3436", fg="#636e72", font=("Helvetica", 8)
-                 ).pack(side=tk.RIGHT, padx=12)
-
-    def _set_status(self, msg, tipo="ok"):
-        cores = {"ok": C_SUCCESS, "erro": C_ERROR, "aviso": C_WARN}
-        self._status_icon.config(fg=cores.get(tipo, C_SUCCESS))
-        self._status_var.set(f"  {msg}")
-
-
-# ══════════════════════════════════════════════════════════════
-# ENTRADA
-# ══════════════════════════════════════════════════════════════
-
-if __name__ == "__main__":
-    App()
+log.info("APP iniciada")
+janela.mainloop()
